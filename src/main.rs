@@ -39,10 +39,13 @@ fn main() -> ExitCode {
 
         // Add command arguments.
         for (id, def) in def.args {
-            let mut arg = Arg::new(&id).help(def.description);
+            let mut arg = Arg::new(&id)
+                .help(def.description)
+                .value_name(def.placeholder.unwrap_or_else(|| id.to_uppercase()));
 
             match def.ty {
                 ArgType::Bool => arg = arg.action(ArgAction::SetTrue),
+                ArgType::String => (),
             }
 
             if let Some(v) = def.long {
@@ -51,11 +54,6 @@ fn main() -> ExitCode {
 
             if let Some(v) = def.short {
                 arg = arg.short(v);
-            }
-
-            // Check if this is a positional argument.
-            if arg.get_long().is_none() && arg.get_short().is_none() {
-                arg = arg.value_name(id.to_uppercase());
             }
 
             cmd = cmd.arg(arg);

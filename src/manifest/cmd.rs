@@ -17,6 +17,7 @@ pub struct CommandArg {
     pub short: Option<char>,
     #[serde(rename = "type")]
     pub ty: ArgType,
+    pub placeholder: Option<String>,
 }
 
 /// Type of command argument.
@@ -24,4 +25,5 @@ pub struct CommandArg {
 #[serde(rename_all = "kebab-case")]
 pub enum ArgType {
     Bool,
+    String,
 }
