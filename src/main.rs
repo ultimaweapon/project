@@ -56,6 +56,10 @@ fn main() -> ExitCode {
                 arg = arg.short(v);
             }
 
+            if let Some(v) = def.default {
+                arg = arg.default_missing_value(v).num_args(0..=1);
+            }
+
             cmd = cmd.arg(arg);
         }
 

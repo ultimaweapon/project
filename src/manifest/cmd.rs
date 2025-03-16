@@ -18,6 +18,7 @@ pub struct CommandArg {
     #[serde(rename = "type")]
     pub ty: ArgType,
     pub placeholder: Option<String>,
+    pub default: Option<String>,
 }
 
 /// Type of command argument.
