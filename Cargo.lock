@@ -384,6 +384,7 @@ dependencies = [
 name = "project"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "clap",
  "erdp",
  "flate2",

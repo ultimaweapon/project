@@ -1,13 +1,15 @@
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 use erdp::ErrorDisplay;
+use rustc_hash::FxHashMap;
 
 use self::manifest::{ArgType, Project};
 
 mod manifest;
+mod script;
 
 fn main() -> ExitCode {
     // Open Project.yml.
@@ -33,9 +35,19 @@ fn main() -> ExitCode {
     let mut parser = Command::new("Project")
         .about("Run a command defined in Project.yml")
         .subcommand_required(true);
+    let mut actions = FxHashMap::default();
 
     for (name, def) in manifest.commands {
-        let mut cmd = Command::new(name).about(def.description);
+        // Get command action.
+        let mut cmd = Command::new(&name).about(def.description);
+        let action = if let Some(v) = def.script {
+            CommandAction::Script(v.into())
+        } else {
+            eprintln!("No action is configured for command '{name}'.");
+            return ExitCode::FAILURE;
+        };
+
+        assert!(actions.insert(name, action).is_none());
 
         // Add command arguments.
         for (id, def) in def.args {
@@ -66,8 +78,16 @@ fn main() -> ExitCode {
         parser = parser.subcommand(cmd);
     }
 
-    // Parse arguments.
-    parser.get_matches();
+    // Execute command.
+    let args = parser.get_matches();
+    let (cmd, args) = args.subcommand().unwrap();
 
-    ExitCode::SUCCESS
+    match actions.get(cmd).unwrap() {
+        CommandAction::Script(script) => self::script::run(script, args),
+    }
+}
+
+/// Action of a command.
+enum CommandAction {
+    Script(PathBuf),
 }

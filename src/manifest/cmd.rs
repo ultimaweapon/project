@@ -7,6 +7,7 @@ pub struct Command {
     pub description: String,
     #[serde(default)]
     pub args: FxHashMap<String, CommandArg>,
+    pub script: Option<String>,
 }
 
 /// Command argument definition.
