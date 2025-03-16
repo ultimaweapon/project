@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{MAIN_SEPARATOR_STR, PathBuf};
 
 use flate2::read::MultiGzDecoder;
 
@@ -8,8 +8,26 @@ fn main() {
     // Download and extract C++ dependencies.
     ensure_dep("lua-5.4.7", "https://www.lua.org/ftp/lua-5.4.7.tar.gz");
 
-    // Build Lua.
+    // Build C++ sources.
     let lua = PathBuf::from_iter(["deps", "lua-5.4.7", "src"]);
+    let mut cc = cc::Build::new();
+    let sources = [["src", "script", "engine.cpp"].as_slice()];
+
+    cc.cpp(true).include(&lua);
+
+    for src in sources {
+        let path = src.join(MAIN_SEPARATOR_STR);
+
+        println!("cargo::rerun-if-changed={path}");
+
+        cc.file(path);
+    }
+
+    cc.compile("project");
+
+    drop(cc);
+
+    // Build Lua.
     let mut cc = cc::Build::new();
     let sources = [
         "lapi.c",
@@ -46,10 +64,13 @@ fn main() {
         "linit.c",
     ];
 
-    cc.cpp(true); // Use C++ exception instead of setjmp/longjmp for error/yield.
+    // Use C++ exception instead of setjmp/longjmp for error/yield.
+    cc.cpp(true);
 
     if cc.get_compiler().is_like_msvc() {
-        cc.flag("/TP"); // cc does not do this for us
+        cc.flag("/TP");
+    } else {
+        cc.flag("-xc++");
     }
 
     match os.as_str() {
@@ -63,14 +84,7 @@ fn main() {
         cc.file(lua.join(src));
     }
 
-    cc.compile("lua");
-
-    // Build C++ sources.
-    cc::Build::new()
-        .cpp(true)
-        .include(lua)
-        .file(PathBuf::from_iter(["src", "script", "engine.cpp"]))
-        .compile("project");
+    cc.compile("lua-vendored"); // Avoid attempt to link with system Lua.
 }
 
 fn ensure_dep(dir: &str, tar: &str) {

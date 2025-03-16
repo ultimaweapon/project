@@ -9,6 +9,7 @@ erdp = "0.1.1"
 rustc-hash = "2.1.1"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_yaml = "0.9.34"
+thiserror = "2.0.12"
 
 [build-dependencies]
 cc = "1.2.16"
