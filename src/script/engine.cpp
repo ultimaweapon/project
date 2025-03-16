@@ -1,11 +1,19 @@
-struct engine {};
+#include <lua.hpp>
 
-extern "C" engine *engine_new()
+#include <new>
+
+extern "C" lua_State *engine_new()
 {
-    return new engine();
+    auto L = luaL_newstate();
+
+    if (!L) {
+        throw std::bad_alloc();
+    }
+
+    return L;
 }
 
-extern "C" void engine_free(engine *e)
+extern "C" void engine_free(lua_State *L)
 {
-    delete e;
+    lua_close(L);
 }

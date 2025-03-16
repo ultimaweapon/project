@@ -1,5 +1,5 @@
 /// Encapsulates a `lua_State`.
-pub struct Engine(*mut engine);
+pub struct Engine(*mut lua_State);
 
 impl Engine {
     pub fn new() -> Self {
@@ -15,9 +15,9 @@ impl Drop for Engine {
 
 #[allow(non_camel_case_types)]
 #[repr(C)]
-struct engine([u8; 0]);
+struct lua_State([u8; 0]);
 
 unsafe extern "C-unwind" {
-    fn engine_new() -> *mut engine;
-    fn engine_free(e: *mut engine);
+    fn engine_new() -> *mut lua_State;
+    fn engine_free(L: *mut lua_State);
 }
