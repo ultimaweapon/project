@@ -5,8 +5,7 @@ use thiserror::Error;
 
 /// Encapsulates a `lua_State`.
 ///
-/// Any method that requires a mutable borrow of this struct indicate it is going to change the
-/// depth of Lua stack.
+/// Any method that requires a mutable borrow of this struct indicate it is going to pop Lua stack.
 pub struct Engine(*mut lua_State);
 
 impl Engine {
@@ -22,6 +21,14 @@ impl Engine {
 
         if !unsafe { engine_load(self.0, name.as_ptr(), script.as_ptr().cast(), script.len()) } {
             return Err(EngineError::LoadFile(self.pop_string_lossy().unwrap()));
+        }
+
+        Ok(())
+    }
+
+    pub fn run(&mut self) -> Result<(), EngineError> {
+        if !unsafe { engine_pcall(self.0, 0, 1, 0) } {
+            return Err(EngineError::RunScript(self.pop_string_lossy().unwrap()));
         }
 
         Ok(())
@@ -63,6 +70,9 @@ pub enum EngineError {
 
     #[error("{0}")]
     LoadFile(String),
+
+    #[error("{0}")]
+    RunScript(String),
 }
 
 #[allow(non_camel_case_types)]
@@ -72,12 +82,13 @@ struct lua_State([u8; 0]);
 unsafe extern "C-unwind" {
     fn engine_new() -> *mut lua_State;
     fn engine_free(L: *mut lua_State);
-    fn engine_pop(L: *mut lua_State, n: c_int);
     fn engine_load(
         L: *mut lua_State,
         name: *const c_char,
         script: *const c_char,
         len: usize,
     ) -> bool;
+    fn engine_pcall(L: *mut lua_State, nargs: c_int, nresults: c_int, msgh: c_int) -> bool;
     fn engine_to_string(L: *mut lua_State, index: c_int) -> *const c_char;
+    fn engine_pop(L: *mut lua_State, n: c_int);
 }

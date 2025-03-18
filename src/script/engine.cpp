@@ -28,11 +28,6 @@ extern "C" void engine_free(lua_State *L)
     lua_close(L);
 }
 
-extern "C" void engine_pop(lua_State *L, int n)
-{
-    lua_pop(L, n);
-}
-
 extern "C" bool engine_load(lua_State *L, const char *name, const char *script, size_t len)
 {
     if (!lua_checkstack(L, 1)) {
@@ -42,7 +37,17 @@ extern "C" bool engine_load(lua_State *L, const char *name, const char *script, 
     return luaL_loadbufferx(L, script, len, name, "t") == LUA_OK;
 }
 
+extern "C" bool engine_pcall(lua_State *L, int nargs, int nresults, int msgh)
+{
+    return lua_pcall(L, nargs, nresults, msgh) == LUA_OK;
+}
+
 extern "C" const char *engine_to_string(lua_State *L, int index)
 {
     return lua_tostring(L, index);
+}
+
+extern "C" void engine_pop(lua_State *L, int n)
+{
+    lua_pop(L, n);
 }

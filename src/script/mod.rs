@@ -24,5 +24,18 @@ pub fn run(script: &PathBuf, _: &ArgMatches) -> ExitCode {
         }
     }
 
+    // Run the script.
+    match engine.run() {
+        Ok(_) => (),
+        Err(EngineError::RunScript(v)) => {
+            eprintln!("{v}");
+            return ExitCode::FAILURE;
+        }
+        Err(e) => {
+            eprintln!("Failed to run {}: {}.", script.display(), e.display());
+            return ExitCode::FAILURE;
+        }
+    }
+
     ExitCode::SUCCESS
 }
