@@ -4,6 +4,7 @@
 
 #include <exception>
 #include <new>
+#include <utility>
 
 #include <stdint.h>
 
@@ -16,10 +17,27 @@ struct out_of_stack : std::exception {
 
 extern "C" lua_State *engine_new()
 {
+    // Create Lua state.
     auto L = luaL_newstate();
 
     if (!L) {
         throw std::bad_alloc();
+    }
+
+    // Register libraries.
+    auto libs = {
+        std::make_pair(LUA_GNAME, luaopen_base),
+        std::make_pair(LUA_COLIBNAME, luaopen_coroutine),
+        std::make_pair(LUA_TABLIBNAME, luaopen_table),
+        std::make_pair(LUA_IOLIBNAME, luaopen_io),
+        std::make_pair(LUA_STRLIBNAME, luaopen_string),
+        std::make_pair(LUA_MATHLIBNAME, luaopen_math),
+        std::make_pair(LUA_UTF8LIBNAME, luaopen_utf8)
+    };
+
+    for (auto &l : libs) {
+        luaL_requiref(L, l.first, l.second, 1);
+        lua_pop(L, 1);
     }
 
     return L;
