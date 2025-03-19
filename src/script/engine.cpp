@@ -24,7 +24,7 @@ extern "C" lua_State *engine_new()
         throw std::bad_alloc();
     }
 
-    // Register libraries.
+    // Register libraries that does not need to alter its behavior.
     auto libs = {
         std::make_pair(LUA_GNAME, luaopen_base),
         std::make_pair(LUA_COLIBNAME, luaopen_coroutine),
@@ -39,6 +39,20 @@ extern "C" lua_State *engine_new()
         luaL_requiref(L, l.first, l.second, 1);
         lua_pop(L, 1);
     }
+
+    // Register "os" library.
+    luaL_requiref(L, LUA_OSLIBNAME, luaopen_os, 1);
+
+    if (!lua_checkstack(L, 1)) {
+        lua_close(L);
+        throw out_of_stack();
+    }
+
+    lua_pushnil(L);
+    lua_setfield(L, -2, "exit");
+    lua_pushnil(L);
+    lua_setfield(L, -2, "setlocale");
+    lua_pop(L, 1);
 
     return L;
 }
