@@ -10,6 +10,18 @@ Project is a cross-platform CLI program to execute commands defined in the `Proj
 - Single executable with only system dependencies.
 - Lua as scripting language.
 
+## Script API
+
+Lua standard libraries are available except `debug` and `package`. The `os` library also has `exit` and `setlocale` removed.
+
+### os.arch()
+
+Returns architecture of the OS as a string. The value will be one of `aarch64` and `x86_64`.
+
+### os.kind()
+
+Returns kind of the OS as a string. The value will be one of `linux`, `macos` and `windows`.
+
 ## License
 
 This project is licensed under either of
