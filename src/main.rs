@@ -8,6 +8,7 @@ use rustc_hash::FxHashMap;
 
 use self::manifest::{ArgType, Project};
 
+mod api;
 mod manifest;
 mod script;
 

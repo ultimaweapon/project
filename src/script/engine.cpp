@@ -40,26 +40,17 @@ extern "C" lua_State *engine_new()
         lua_pop(L, 1);
     }
 
-    // Register "os" library.
-    luaL_requiref(L, LUA_OSLIBNAME, luaopen_os, 1);
-
-    if (!lua_checkstack(L, 1)) {
-        lua_close(L);
-        throw out_of_stack();
-    }
-
-    lua_pushnil(L);
-    lua_setfield(L, -2, "exit");
-    lua_pushnil(L);
-    lua_setfield(L, -2, "setlocale");
-    lua_pop(L, 1);
-
     return L;
 }
 
 extern "C" void engine_free(lua_State *L)
 {
     lua_close(L);
+}
+
+extern "C" void engine_require_os(lua_State *L)
+{
+    luaL_requiref(L, LUA_OSLIBNAME, luaopen_os, 1);
 }
 
 extern "C" bool engine_load(lua_State *L, const char *name, const char *script, size_t len)
@@ -74,6 +65,26 @@ extern "C" bool engine_load(lua_State *L, const char *name, const char *script, 
 extern "C" bool engine_pcall(lua_State *L, int nargs, int nresults, int msgh)
 {
     return lua_pcall(L, nargs, nresults, msgh) == LUA_OK;
+}
+
+extern "C" bool engine_checkstack(lua_State *L, int n)
+{
+    return lua_checkstack(L, n) != 0;
+}
+
+extern "C" void engine_pushnil(lua_State *L)
+{
+    lua_pushnil(L);
+}
+
+extern "C" const char *engine_pushstring(lua_State *L, const char *s)
+{
+    return lua_pushstring(L, s);
+}
+
+extern "C" void engine_pushcclosure(lua_State *L, int (*fn) (lua_State *L), int n)
+{
+    lua_pushcclosure(L, fn, n);
 }
 
 extern "C" bool engine_isnil(lua_State *L, int index)
@@ -91,9 +102,39 @@ extern "C" const char *engine_tostring(lua_State *L, int index)
     return lua_tostring(L, index);
 }
 
+extern "C" void *engine_touserdata(lua_State *L, int index)
+{
+    return lua_touserdata(L, index);
+}
+
 extern "C" const char *engine_typename(lua_State *L, int index)
 {
     return lua_typename(L, lua_type(L, index));
+}
+
+extern "C" void engine_createtable(lua_State *L, int narr, int nrec)
+{
+    lua_createtable(L, narr, nrec);
+}
+
+extern "C" void engine_setfield(lua_State *L, int index, const char *k)
+{
+    lua_setfield(L, index, k);
+}
+
+extern "C" void *engine_newuserdatauv(lua_State *L, size_t size, int nuvalue)
+{
+    return lua_newuserdatauv(L, size, nuvalue);
+}
+
+extern "C" void engine_setmetatable(lua_State *L, int index)
+{
+    lua_setmetatable(L, index);
+}
+
+extern "C" int engine_upvalueindex(int i)
+{
+    return lua_upvalueindex(i);
 }
 
 extern "C" void engine_pop(lua_State *L, int n)

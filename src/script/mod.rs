@@ -1,18 +1,31 @@
+pub use self::engine::*;
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::ArgMatches;
 use erdp::ErrorDisplay;
 
-use self::engine::{Engine, EngineError};
-
 mod engine;
 
 pub fn run(script: &PathBuf, _: &ArgMatches) -> ExitCode {
-    // Load script.
-    let mut engine = Engine::new();
+    // Register "os" library.
+    let mut en = Engine::new();
 
-    match engine.load(script) {
+    en.require_os();
+
+    // Remove "exit" and "setlocale".
+    en.push_nil().unwrap();
+    unsafe { en.set_field(-2, c"exit") };
+    en.push_nil().unwrap();
+    unsafe { en.set_field(-2, c"setlocale") };
+
+    // Register our APIs.
+    crate::api::os::register(&mut en);
+    unsafe { en.pop() };
+
+    // Load script.
+    match en.load(script) {
         Ok(_) => (),
         Err(EngineError::LoadFile(v)) => {
             eprintln!("{v}");
@@ -25,7 +38,7 @@ pub fn run(script: &PathBuf, _: &ArgMatches) -> ExitCode {
     }
 
     // Run the script.
-    match engine.run() {
+    match en.run() {
         Ok(v) => v,
         Err(EngineError::RunScript(v)) => {
             eprintln!("{v}");
