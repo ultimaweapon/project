@@ -1,4 +1,5 @@
 pub use self::engine::*;
+pub use self::error::*;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -7,6 +8,7 @@ use clap::ArgMatches;
 use erdp::ErrorDisplay;
 
 mod engine;
+mod error;
 
 pub fn run(script: &PathBuf, _: &ArgMatches) -> ExitCode {
     // Register "os" library.
@@ -15,12 +17,12 @@ pub fn run(script: &PathBuf, _: &ArgMatches) -> ExitCode {
     en.require_os();
 
     // Remove "exit" and "setlocale".
-    en.push_nil().unwrap();
+    en.push_nil();
     unsafe { en.set_field(-2, c"exit") };
-    en.push_nil().unwrap();
+    en.push_nil();
     unsafe { en.set_field(-2, c"setlocale") };
 
-    // Register our APIs.
+    // Register "os" APIs.
     crate::api::os::register(&mut en);
     unsafe { en.pop() };
 

@@ -2,18 +2,10 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#include <exception>
 #include <new>
 #include <utility>
 
 #include <stdint.h>
-
-struct out_of_stack : std::exception {
-    const char *what() const noexcept override
-    {
-        return "out of Lua stack";
-    }
-};
 
 extern "C" lua_State *engine_new()
 {
@@ -55,10 +47,6 @@ extern "C" void engine_require_os(lua_State *L)
 
 extern "C" bool engine_load(lua_State *L, const char *name, const char *script, size_t len)
 {
-    if (!lua_checkstack(L, 1)) {
-        throw out_of_stack();
-    }
-
     return luaL_loadbufferx(L, script, len, name, "t") == LUA_OK;
 }
 
@@ -67,9 +55,9 @@ extern "C" bool engine_pcall(lua_State *L, int nargs, int nresults, int msgh)
     return lua_pcall(L, nargs, nresults, msgh) == LUA_OK;
 }
 
-extern "C" bool engine_checkstack(lua_State *L, int n)
+extern "C" void engine_checkstack(lua_State *L, int n)
 {
-    return lua_checkstack(L, n) != 0;
+    luaL_checkstack(L, n, nullptr);
 }
 
 extern "C" void engine_pushnil(lua_State *L)
@@ -85,6 +73,21 @@ extern "C" const char *engine_pushstring(lua_State *L, const char *s)
 extern "C" void engine_pushcclosure(lua_State *L, int (*fn) (lua_State *L), int n)
 {
     lua_pushcclosure(L, fn, n);
+}
+
+extern "C" int engine_gettop(lua_State *L)
+{
+    return lua_gettop(L);
+}
+
+extern "C" const char *engine_checkstring(lua_State *L, int arg)
+{
+    return luaL_checkstring(L, arg);
+}
+
+extern "C" void engine_argerror(lua_State *L, int arg, const char *extramsg)
+{
+    luaL_argerror(L, arg, extramsg);
 }
 
 extern "C" bool engine_isnil(lua_State *L, int index)
@@ -140,4 +143,9 @@ extern "C" int engine_upvalueindex(int i)
 extern "C" void engine_pop(lua_State *L, int n)
 {
     lua_pop(L, n);
+}
+
+extern "C" int engine_error(lua_State *L, const char *msg)
+{
+    return luaL_error(L, "%s", msg);
 }

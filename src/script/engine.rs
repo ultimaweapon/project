@@ -7,6 +7,8 @@ use std::process::ExitCode;
 
 use thiserror::Error;
 
+use super::LuaError;
+
 /// Encapsulates a `lua_State`.
 ///
 /// Any method that requires a mutable borrow of this struct indicate it is going to pop Lua stack.
@@ -18,10 +20,14 @@ impl Engine {
     }
 
     pub fn require_os(&self) {
+        // SAFETY: 3 is maximum stack size used by engine_require_os.
+        unsafe { engine_checkstack(self.0, 3) };
         unsafe { engine_require_os(self.0) };
     }
 
     pub fn load(&mut self, file: impl AsRef<Path>) -> Result<(), EngineError> {
+        unsafe { engine_checkstack(self.0, 1) };
+
         // Load.
         let file = file.as_ref();
         let script = std::fs::read_to_string(file).map_err(EngineError::ReadFile)?;
@@ -35,6 +41,8 @@ impl Engine {
     }
 
     pub fn run(&mut self) -> Result<ExitCode, EngineError> {
+        unsafe { engine_checkstack(self.0, 1) };
+
         // Run.
         if !unsafe { engine_pcall(self.0, 0, 1, 0) } {
             return unsafe { Err(EngineError::RunScript(self.pop_string_lossy().unwrap())) };
@@ -52,16 +60,13 @@ impl Engine {
         }
     }
 
-    pub fn push_nil(&self) -> Result<(), EngineError> {
-        if !unsafe { engine_checkstack(self.0, 1) } {
-            return Err(EngineError::OutOfStack);
-        }
-
+    pub fn push_nil(&self) {
+        unsafe { engine_checkstack(self.0, 1) };
         unsafe { engine_pushnil(self.0) };
-        Ok(())
     }
 
     pub fn push_string(&self, s: impl AsRef<CStr>) {
+        unsafe { engine_checkstack(self.0, 1) };
         unsafe { engine_pushstring(self.0, s.as_ref().as_ptr()) };
     }
 
@@ -70,25 +75,32 @@ impl Engine {
     pub fn push_fn<F: FnMut(&mut Self) -> c_int + 'static>(&self, f: F) {
         assert!(align_of::<F>() <= align_of::<*mut ()>());
 
+        // SAFETY: 3 is maximum items we pushed here.
+        unsafe { engine_checkstack(self.0, 3) };
+
         // Move Rust function to Lua user data.
         let ptr = unsafe { engine_newuserdatauv(self.0, size_of::<F>(), 1) };
 
         unsafe { ptr.cast::<F>().write(f) };
 
         // Set finalizer.
-        unsafe extern "C" fn finalizer<F>(#[allow(non_snake_case)] L: *mut lua_State) -> c_int {
+        unsafe extern "C-unwind" fn finalizer<F>(
+            #[allow(non_snake_case)] L: *mut lua_State,
+        ) -> c_int {
             let ptr = unsafe { engine_touserdata(L, 1).cast::<F>() };
             unsafe { std::ptr::drop_in_place(ptr) };
             0
         }
 
-        unsafe { engine_createtable(self.0, 0, 1) };
-        unsafe { engine_pushcclosure(self.0, finalizer::<F>, 0) };
-        unsafe { engine_setfield(self.0, -2, c"__gc".as_ptr()) };
-        unsafe { engine_setmetatable(self.0, -1) };
+        if std::mem::needs_drop::<F>() {
+            unsafe { engine_createtable(self.0, 0, 1) };
+            unsafe { engine_pushcclosure(self.0, finalizer::<F>, 0) };
+            unsafe { engine_setfield(self.0, -2, c"__gc".as_ptr()) };
+            unsafe { engine_setmetatable(self.0, -1) };
+        }
 
         // Push invoker.
-        unsafe extern "C" fn invoker<F: FnMut(&mut Engine) -> c_int + 'static>(
+        unsafe extern "C-unwind" fn invoker<F: FnMut(&mut Engine) -> c_int + 'static>(
             #[allow(non_snake_case)] L: *mut lua_State,
         ) -> c_int {
             let cb = unsafe { engine_upvalueindex(1) };
@@ -100,6 +112,20 @@ impl Engine {
         unsafe { engine_pushcclosure(self.0, invoker::<F>, 1) };
     }
 
+    pub fn top(&self) -> c_int {
+        unsafe { engine_gettop(self.0) }
+    }
+
+    pub fn arg_string(&self, n: c_int) -> &CStr {
+        let v = unsafe { engine_checkstring(self.0, n) };
+
+        unsafe { CStr::from_ptr(v) }
+    }
+
+    pub fn arg_error(&self, n: c_int, m: impl AsRef<CStr>) -> ! {
+        unsafe { engine_argerror(self.0, n, m.as_ref().as_ptr()) };
+    }
+
     /// # Safety
     /// Lua stack must have at least one item.
     pub unsafe fn pop_nil(&mut self) -> Option<()> {
@@ -109,6 +135,12 @@ impl Engine {
 
         unsafe { engine_pop(self.0, 1) };
         Some(())
+    }
+
+    /// # Safety
+    /// `index` must be valid.
+    pub unsafe fn is_nil(&self, index: c_int) -> bool {
+        unsafe { engine_isnil(self.0, index) }
     }
 
     /// # Safety
@@ -176,6 +208,13 @@ impl Engine {
     pub unsafe fn set_field(&mut self, table: c_int, key: impl AsRef<CStr>) {
         unsafe { engine_setfield(self.0, table, key.as_ref().as_ptr()) };
     }
+
+    pub fn error<M>(&self, e: LuaError<M>) -> !
+    where
+        M: Into<String>,
+    {
+        unsafe { engine_error(self.0, e.to_lua().as_ptr()) };
+    }
 }
 
 impl Drop for Engine {
@@ -187,9 +226,6 @@ impl Drop for Engine {
 /// Represents an error when [`Engine`] fails.
 #[derive(Debug, Error)]
 pub enum EngineError {
-    #[error("out of Lua stack")]
-    OutOfStack,
-
     #[error("couldn't read the file")]
     ReadFile(#[source] std::io::Error),
 
@@ -221,14 +257,17 @@ unsafe extern "C-unwind" {
         len: usize,
     ) -> bool;
     fn engine_pcall(L: *mut lua_State, nargs: c_int, nresults: c_int, msgh: c_int) -> bool;
-    fn engine_checkstack(L: *mut lua_State, n: c_int) -> bool;
+    fn engine_checkstack(L: *mut lua_State, n: c_int);
     fn engine_pushnil(L: *mut lua_State);
     fn engine_pushstring(L: *mut lua_State, s: *const c_char) -> *const c_char;
     fn engine_pushcclosure(
         L: *mut lua_State,
-        fp: unsafe extern "C" fn(*mut lua_State) -> c_int,
+        fp: unsafe extern "C-unwind" fn(*mut lua_State) -> c_int,
         n: c_int,
     );
+    fn engine_gettop(L: *mut lua_State) -> c_int;
+    fn engine_checkstring(L: *mut lua_State, arg: c_int) -> *const c_char;
+    fn engine_argerror(L: *mut lua_State, arg: c_int, extramsg: *const c_char) -> !;
     fn engine_isnil(L: *mut lua_State, index: c_int) -> bool;
     fn engine_tointegerx(L: *mut lua_State, index: c_int, isnum: *mut c_int) -> i64;
     fn engine_tostring(L: *mut lua_State, index: c_int) -> *const c_char;
@@ -240,4 +279,5 @@ unsafe extern "C-unwind" {
     fn engine_setmetatable(L: *mut lua_State, index: c_int);
     fn engine_upvalueindex(i: c_int) -> c_int;
     fn engine_pop(L: *mut lua_State, n: c_int);
+    fn engine_error(L: *mut lua_State, msg: *const c_char) -> !;
 }
