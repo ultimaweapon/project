@@ -1,18 +1,18 @@
-use std::ffi::{CStr, CString, c_char, c_int};
+use std::ffi::{CStr, c_char, c_int};
 use std::mem::ManuallyDrop;
-use std::num::TryFromIntError;
 use std::ops::DerefMut;
 use std::panic::UnwindSafe;
 use std::path::Path;
-use std::process::ExitCode;
-
-use thiserror::Error;
 
 use crate::LuaError;
 
 /// Encapsulates a `lua_State`.
 ///
 /// Any method that requires a mutable borrow of this struct indicate it is going to pop Lua stack.
+///
+/// All methods in this struct may raise a C++ exception. When calling outside Lua runtime it will
+/// cause the process to terminate the same as Rust panic. Inside Lua runtime it will report as Lua
+/// error.
 pub struct Engine(*mut lua_State);
 
 impl Engine {
@@ -26,39 +26,32 @@ impl Engine {
         unsafe { engine_require_os(self.0) };
     }
 
-    pub fn load(&mut self, file: impl AsRef<Path>) -> Result<(), EngineError> {
+    /// This method will load the whole content of `file` into memory before passing to Lua.
+    pub fn load(&mut self, file: impl AsRef<Path>) -> Result<bool, std::io::Error> {
+        // SAFETY: engine_load return either error object or a chunk.
         unsafe { engine_checkstack(self.0, 1) };
+
+        // Read file.
+        let file = file.as_ref();
+        let script = std::fs::read(file)?;
+
+        // Get chunk name.
+        let file = file.to_string_lossy();
+        let mut name = String::with_capacity(1 + file.len() + 1);
+
+        name.push('@');
+        name.push_str(&file);
+        name.push('\0');
 
         // Load.
-        let file = file.as_ref();
-        let script = std::fs::read_to_string(file).map_err(EngineError::ReadFile)?;
-        let name = CString::new(format!("@{}", file.to_string_lossy())).unwrap();
+        let name = name.as_ptr().cast();
 
-        if !unsafe { engine_load(self.0, name.as_ptr(), script.as_ptr().cast(), script.len()) } {
-            return unsafe { Err(EngineError::LoadFile(self.pop_string_lossy().unwrap())) };
-        }
-
-        Ok(())
+        Ok(unsafe { engine_load(self.0, name, script.as_ptr().cast(), script.len()) })
     }
 
-    pub fn run(&mut self) -> Result<ExitCode, EngineError> {
-        unsafe { engine_checkstack(self.0, 1) };
-
-        // Run.
-        if !unsafe { engine_pcall(self.0, 0, 1, 0) } {
-            return unsafe { Err(EngineError::RunScript(self.pop_string_lossy().unwrap())) };
-        }
-
-        // Get result.
-        if let Some(v) = unsafe { self.pop_int() } {
-            u8::try_from(v)
-                .map_err(|e| EngineError::ConvertResult(v, e))
-                .map(ExitCode::from)
-        } else if let Some(_) = unsafe { self.pop_nil() } {
-            Ok(ExitCode::SUCCESS)
-        } else {
-            unsafe { Err(EngineError::InvalidResult(self.pop_type())) }
-        }
+    pub unsafe fn run(&mut self, nargs: c_int, nresults: c_int, msgh: c_int) -> bool {
+        unsafe { engine_checkstack(self.0, nresults) };
+        unsafe { engine_pcall(self.0, nargs, nresults, msgh) }
     }
 
     pub fn push_nil(&self) {
@@ -225,25 +218,6 @@ impl Drop for Engine {
     fn drop(&mut self) {
         unsafe { engine_free(self.0) };
     }
-}
-
-/// Represents an error when [`Engine`] fails.
-#[derive(Debug, Error)]
-pub enum EngineError {
-    #[error("couldn't read the file")]
-    ReadFile(#[source] std::io::Error),
-
-    #[error("{0}")]
-    LoadFile(String),
-
-    #[error("{0}")]
-    RunScript(String),
-
-    #[error("couldn't convert script result {0} to exit code")]
-    ConvertResult(i64, #[source] TryFromIntError),
-
-    #[error("expect script to return either nil or integer, got {0}")]
-    InvalidResult(&'static str),
 }
 
 #[allow(non_camel_case_types)]

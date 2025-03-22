@@ -102,11 +102,57 @@ Returns kind of the OS. The value will be one of `linux`, `macos` and `windows`.
 
 ### os.run(prog [, ...])
 
-Run `prog` with the remaining arguments as its arguments. Unlike `os.execute`, this does not use OS shell to run `prog`. This function will raise an error by default if `prog` exit with non-zero code. By default, all standard streams will be inherits from `project` process and working directory will be the directory that contains `Project.yml`.
+Run `prog` with the remaining arguments as its arguments. Unlike `os.execute`, this does not use OS shell to run `prog`. This function will raise an error by default if `prog` exit with non-zero code. By default, all standard streams will be inherits from Project process and working directory will be the directory that contains `Project.yml`.
 
 If `prog` is not an absolute path, the `PATH` will be searched in an OS-defined way.
 
 All `nil` in the arguments will be removed (e.g. `os.run('echo', 'abc', nil, 'def')` will invoke `echo` with only 2 arguments).
+
+## Exit code
+
+Project will exit with exit code 0 when all operations completed successfully. The script can also return a custom exit code:
+
+```lua
+return 5
+```
+
+Will cause Project to exit with exit code 5. The code 100 and above are reserved for Project use and have the following meaning:
+
+### 100
+
+The script exit with an error. This is runtime error, not compile time.
+
+### 101
+
+Project process was panic. This indicate an underlying bug on Project itself to please report this!
+
+### 102
+
+Project unable to open `Project.yml`.
+
+### 103
+
+Project unable to parse `Project.yml`.
+
+### 104
+
+No action is defined for some commands.
+
+### 105
+
+Project unable to read Lua script for the command.
+
+### 106
+
+Project unable to load Lua script for the command.
+
+### 107
+
+Return value from Lua script is not either nil or integer.
+
+### 108
+
+Return value from Lua script is integer outside 0 - 99.
 
 ## Development
 

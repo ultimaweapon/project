@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
+use std::process::{ExitCode, Termination};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;
-use lua54::{Engine, EngineError};
+use lua54::Engine;
 use rustc_hash::FxHashMap;
 
 use self::manifest::{ArgType, Project};
@@ -12,24 +12,18 @@ use self::manifest::{ArgType, Project};
 mod api;
 mod manifest;
 
-fn main() -> ExitCode {
+fn main() -> Exit {
     // Open Project.yml.
     let path = Path::new("Project.yml");
     let manifest = match File::open(path) {
         Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to open {}: {}.", path.display(), e.display());
-            return ExitCode::FAILURE;
-        }
+        Err(e) => return Exit::OpenProject(path.into(), e),
     };
 
     // Load Project.yml.
     let manifest: Project = match serde_yaml::from_reader(manifest) {
         Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to load {}: {}.", path.display(), e.display());
-            return ExitCode::FAILURE;
-        }
+        Err(e) => return Exit::LoadProject(path.into(), e),
     };
 
     // Build arguments parser.
@@ -44,8 +38,7 @@ fn main() -> ExitCode {
         let action = if let Some(v) = def.script {
             CommandAction::Script(v.into())
         } else {
-            eprintln!("No action is configured for command '{name}'.");
-            return ExitCode::FAILURE;
+            return Exit::NoCommandAction(name);
         };
 
         assert!(actions.insert(name, action).is_none());
@@ -83,12 +76,12 @@ fn main() -> ExitCode {
     let args = parser.get_matches();
     let (cmd, args) = args.subcommand().unwrap();
 
-    match actions.get(cmd).unwrap() {
+    match actions.remove(cmd).unwrap() {
         CommandAction::Script(script) => run_script(script, args),
     }
 }
 
-fn run_script(script: &PathBuf, _: &ArgMatches) -> ExitCode {
+fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     // Register "os" library.
     let mut en = Engine::new();
 
@@ -105,33 +98,79 @@ fn run_script(script: &PathBuf, _: &ArgMatches) -> ExitCode {
     unsafe { en.pop() };
 
     // Load script.
-    match en.load(script) {
-        Ok(_) => (),
-        Err(EngineError::LoadFile(v)) => {
-            eprintln!("{v}");
-            return ExitCode::FAILURE;
-        }
-        Err(e) => {
-            eprintln!("Failed to load {}: {}.", script.display(), e.display());
-            return ExitCode::FAILURE;
-        }
+    match en.load(&script) {
+        Ok(true) => (),
+        Ok(false) => return Exit::LoadScript(unsafe { en.pop_string_lossy().unwrap() }),
+        Err(e) => return Exit::ReadScript(script, e),
     }
 
     // Run the script.
-    match en.run() {
-        Ok(v) => v,
-        Err(EngineError::RunScript(v)) => {
-            eprintln!("{v}");
-            return ExitCode::FAILURE;
-        }
-        Err(e) => {
-            eprintln!("Failed to run {}: {}.", script.display(), e.display());
-            return ExitCode::FAILURE;
-        }
+    if !unsafe { en.run(0, 1, 0) } {
+        return Exit::RunScript(unsafe { en.pop_string_lossy().unwrap() });
+    }
+
+    // Get result.
+    let r = if let Some(v) = unsafe { en.pop_int() } {
+        v
+    } else if let Some(_) = unsafe { en.pop_nil() } {
+        return Exit::ScriptResult(0);
+    } else {
+        return Exit::InvalidResult(unsafe { en.pop_type() });
+    };
+
+    match r {
+        0..=99 => r.try_into().map(Exit::ScriptResult).unwrap(),
+        v => Exit::ResultOurOfRange(v),
     }
 }
 
 /// Action of a command.
 enum CommandAction {
     Script(PathBuf),
+}
+
+/// Exit code of Project.
+#[repr(u8)]
+enum Exit {
+    ScriptResult(u8),
+    RunScript(String) = 100,
+    OpenProject(PathBuf, std::io::Error) = 102, // 101 is Rust panic.
+    LoadProject(PathBuf, serde_yaml::Error) = 103,
+    NoCommandAction(String) = 104,
+    ReadScript(PathBuf, std::io::Error) = 105,
+    LoadScript(String) = 106,
+    InvalidResult(&'static str) = 107,
+    ResultOurOfRange(i64) = 108,
+}
+
+impl Termination for Exit {
+    fn report(self) -> ExitCode {
+        // SAFETY: This is safe since Exit marked with `repr(u8)`. See
+        // https://doc.rust-lang.org/std/mem/fn.discriminant.html for more details.
+        let mut code = unsafe { (&self as *const Self as *const u8).read() };
+
+        match self {
+            Self::ScriptResult(v) => code = v,
+            Self::RunScript(v) => eprintln!("{v}"),
+            Self::OpenProject(p, e) => {
+                eprintln!("Failed to open {}: {}.", p.display(), e.display())
+            }
+            Self::LoadProject(p, e) => {
+                eprintln!("Failed to load {}: {}.", p.display(), e.display())
+            }
+            Self::NoCommandAction(n) => eprintln!("No action is configured for command '{n}'."),
+            Self::ReadScript(p, e) => {
+                eprintln!("Failed to read {}: {}.", p.display(), e.display())
+            }
+            Self::LoadScript(v) => eprintln!("{v}"),
+            Self::InvalidResult(v) => {
+                eprintln!("expect script to return either nil or integer, got {v}")
+            }
+            Self::ResultOurOfRange(v) => {
+                eprintln!("expect script to return either nil or integer between 0 - 99, got {v}")
+            }
+        }
+
+        code.into()
+    }
 }
