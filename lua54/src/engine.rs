@@ -2,6 +2,7 @@ use std::ffi::{CStr, CString, c_char, c_int};
 use std::mem::ManuallyDrop;
 use std::num::TryFromIntError;
 use std::ops::DerefMut;
+use std::panic::UnwindSafe;
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -72,7 +73,10 @@ impl Engine {
 
     /// # Panics
     /// If alignment of `f` greater than pointer size.
-    pub fn push_fn<F: FnMut(&mut Self) -> c_int + 'static>(&self, f: F) {
+    pub fn push_fn<F>(&self, f: F)
+    where
+        F: FnMut(&mut Self) -> c_int + UnwindSafe + 'static,
+    {
         assert!(align_of::<F>() <= align_of::<*mut ()>());
 
         // SAFETY: 3 is maximum items we pushed here.
