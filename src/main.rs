@@ -97,6 +97,9 @@ fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     crate::api::os::register(&mut en);
     unsafe { en.pop() };
 
+    // Register "buffer" APIs.
+    crate::api::buffer::register(&mut en);
+
     // Load script.
     match en.load(&script) {
         Ok(true) => (),

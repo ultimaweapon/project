@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-extern "C" lua_State *engine_new()
+extern "C" lua_State *lua54_newstate()
 {
     // Create Lua state.
     auto L = luaL_newstate();
@@ -85,6 +85,11 @@ extern "C" const char *engine_checkstring(lua_State *L, int arg)
     return luaL_checkstring(L, arg);
 }
 
+extern "C" void lua54_typeerror(lua_State *L, int arg, const char *tname)
+{
+    luaL_typeerror(L, arg, tname);
+}
+
 extern "C" void engine_argerror(lua_State *L, int arg, const char *extramsg)
 {
     luaL_argerror(L, arg, extramsg);
@@ -93,6 +98,11 @@ extern "C" void engine_argerror(lua_State *L, int arg, const char *extramsg)
 extern "C" bool engine_isnil(lua_State *L, int index)
 {
     return lua_isnil(L, index) != 0;
+}
+
+extern "C" bool lua54_istable(lua_State *L, int index)
+{
+    return lua_istable(L, index) != 0;
 }
 
 extern "C" int64_t engine_tointegerx(lua_State *L, int index, int *isnum)
@@ -112,12 +122,22 @@ extern "C" void *engine_touserdata(lua_State *L, int index)
 
 extern "C" const char *engine_typename(lua_State *L, int index)
 {
-    return lua_typename(L, lua_type(L, index));
+    return luaL_typename(L, index);
 }
 
 extern "C" void engine_createtable(lua_State *L, int narr, int nrec)
 {
     lua_createtable(L, narr, nrec);
+}
+
+extern "C" int lua54_geti(lua_State *L, int index, int64_t i)
+{
+    return lua_geti(L, index, i);
+}
+
+extern "C" int lua54_getfield(lua_State *L, int index, const char *k)
+{
+    return lua_getfield(L, index, k);
 }
 
 extern "C" void engine_setfield(lua_State *L, int index, const char *k)
@@ -138,6 +158,11 @@ extern "C" void engine_setmetatable(lua_State *L, int index)
 extern "C" int engine_upvalueindex(int i)
 {
     return lua_upvalueindex(i);
+}
+
+extern "C" void lua54_setglobal(lua_State *L, const char *name)
+{
+    lua_setglobal(L, name);
 }
 
 extern "C" void engine_pop(lua_State *L, int n)
