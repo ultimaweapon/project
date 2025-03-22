@@ -8,11 +8,89 @@ Project is a cross-platform CLI program to execute commands defined in the `Proj
 - Small and lightweight.
 - Easy to install on all platforms.
 - Single executable with only system dependencies.
-- Lua 5.4 **without** compatibility with the previous version as scripting language.
+- Lua 5.4 as scripting language.
+
+## Quick start
+
+Create `Project.yml` in the root of your repository with the following content:
+
+```yaml
+commands:
+  build:
+    description: Build the project
+    args:
+      release:
+        description: Enable optimization
+        long: release
+        short: r
+        type: bool
+    script: scripts/build.lua
+```
+
+Then create `scripts/build.lua` with the following content:
+
+```lua
+print('Hello, world!')
+```
+
+Then run:
+
+```sh
+project --help
+```
+
+It will outputs something like:
+
+```
+Run a command defined in Project.yml
+
+Usage: project <COMMAND>
+
+Commands:
+  build  Build the project
+  help   Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help
+```
+
+Notice the `build` command that loaded from your `Project.yml`. Run the following command to see how to use your `build` command:
+
+```sh
+project build --help
+```
+
+It will outputs something like:
+
+```
+Build the project
+
+Usage: project build [OPTIONS]
+
+Options:
+  -r, --release  Enable optimization
+  -h, --help     Print help
+```
+
+If you run `project build` it will run `scripts/build.lua`, which output the following text to the console:
+
+```
+Hello, world!
+```
 
 ## Script API
 
-Lua standard libraries are available except `debug` and `package`. The `os` library also has `exit` and `setlocale` removed.
+Lua [standard libraries](https://www.lua.org/manual/5.4/manual.html#6) are available except `debug` and `package`. The `os` library also has `exit` and `setlocale` removed. Note that Lua version is 5.4 **without** compatibility with the previous version. The following is a list of what differences from Lua 5.4 when compatibility enabled:
+
+- Some `math` functions has been removed:
+  - `atan2`
+  - `cosh`
+  - `sinh`
+  - `tanh`
+  - `pow`
+  - `frexp`
+  - `ldexp`
+  - `log10`
 
 ### os.arch()
 
@@ -29,6 +107,16 @@ Run `prog` with the remaining arguments as its arguments. Unlike `os.execute`, t
 If `prog` is not an absolute path, the `PATH` will be searched in an OS-defined way.
 
 All `nil` in the arguments will be removed (e.g. `os.run('echo', 'abc', nil, 'def')` will invoke `echo` with only 2 arguments).
+
+## Development
+
+### Generate compile_commands.json (Linux and macOS)
+
+This step is required for [clangd](https://clangd.llvm.org/) to work properly. Install [Bear](https://github.com/rizsotto/Bear) then run the following command:
+
+```sh
+bear -- cargo build
+```
 
 ## License
 

@@ -7,7 +7,7 @@ use std::process::ExitCode;
 
 use thiserror::Error;
 
-use super::LuaError;
+use crate::LuaError;
 
 /// Encapsulates a `lua_State`.
 ///

@@ -1,4 +1,4 @@
-use crate::script::Engine;
+use lua54::Engine;
 
 mod arch;
 mod kind;

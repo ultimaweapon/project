@@ -12,8 +12,6 @@ mod api;
 mod manifest;
 mod script;
 
-extern crate lua54_sys;
-
 fn main() -> ExitCode {
     // Open Project.yml.
     let path = Path::new("Project.yml");

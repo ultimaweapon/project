@@ -311,6 +311,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30bde2b3dc3671ae49d8e2e9f044c7c005836e7a023ee57cffa25ab82764bb9e"
 
 [[package]]
+name = "lua54"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "lua54-sys",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "lua54-sys"
 version = "0.1.0"
 dependencies = [
@@ -394,10 +403,9 @@ dependencies = [
 name = "project"
 version = "0.1.0"
 dependencies = [
- "cc",
  "clap",
  "erdp",
- "lua54-sys",
+ "lua54",
  "rustc-hash",
  "serde",
  "serde_yaml",

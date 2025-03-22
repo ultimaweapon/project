@@ -12,10 +12,14 @@ impl<'a, M> LuaError<'a, M>
 where
     M: Into<String>,
 {
+    /// `msg` are typically concise lowercase sentences without trailing punctuation (e.g. `failed
+    /// to open 'foo'`).
     pub fn new(msg: M) -> Self {
         Self { msg, src: None }
     }
 
+    /// `msg` are typically concise lowercase sentences without trailing punctuation (e.g. `failed
+    /// to open 'foo'`).
     pub fn with_source(msg: M, src: &'a dyn Error) -> Self {
         Self {
             msg,

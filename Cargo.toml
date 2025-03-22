@@ -6,14 +6,14 @@ edition = "2024"
 [dependencies]
 clap = { version = "4.5.32", features = ["string"] }
 erdp = "0.1.1"
-lua54-sys = { path = "lua54-sys" }
+lua54 = { path = "lua54" }
 rustc-hash = "2.1.1"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_yaml = "0.9.34"
 thiserror = "2.0.12"
 
-[build-dependencies]
-cc = "1.2.16"
-
 [workspace]
-members = ["lua54-sys"]
+members = [
+    "lua54",
+    "lua54-sys"
+]

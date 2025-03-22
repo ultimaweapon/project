@@ -1,7 +1,7 @@
 use std::ffi::c_int;
 use std::process::Command;
 
-use crate::script::{Engine, LuaError};
+use lua54::{Engine, LuaError};
 
 pub fn entry(en: &mut Engine) -> c_int {
     // Get program.

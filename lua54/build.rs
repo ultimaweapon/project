@@ -3,7 +3,7 @@ use std::path::MAIN_SEPARATOR_STR;
 fn main() {
     // Build C++ sources.
     let mut cc = cc::Build::new();
-    let sources = [["src", "script", "engine.cpp"].as_slice()];
+    let sources = [["src", "ffi.cpp"].as_slice()];
 
     cc.cpp(true)
         .std("c++17")
@@ -17,5 +17,5 @@ fn main() {
         cc.file(path);
     }
 
-    cc.compile("project");
+    cc.compile("lua54-ffi");
 }

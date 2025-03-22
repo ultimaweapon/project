@@ -1,14 +1,9 @@
-pub use self::engine::*;
-pub use self::error::*;
-
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::ArgMatches;
 use erdp::ErrorDisplay;
-
-mod engine;
-mod error;
+use lua54::{Engine, EngineError};
 
 pub fn run(script: &PathBuf, _: &ArgMatches) -> ExitCode {
     // Register "os" library.
