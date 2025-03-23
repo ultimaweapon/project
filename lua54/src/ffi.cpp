@@ -3,9 +3,13 @@
 #include <lauxlib.h>
 
 #include <new>
+#include <type_traits>
 #include <utility>
 
 #include <stdint.h>
+
+static_assert(sizeof(lua_Integer) == sizeof(int64_t));
+static_assert(std::is_signed<lua_Integer>::value);
 
 extern "C" lua_State *lua54_newstate()
 {
@@ -35,7 +39,7 @@ extern "C" lua_State *lua54_newstate()
     return L;
 }
 
-extern "C" void engine_free(lua_State *L)
+extern "C" void lua54_close(lua_State *L)
 {
     lua_close(L);
 }
@@ -120,9 +124,14 @@ extern "C" void *engine_touserdata(lua_State *L, int index)
     return lua_touserdata(L, index);
 }
 
-extern "C" const char *engine_typename(lua_State *L, int index)
+extern "C" int lua54_type(lua_State *L, int index)
 {
-    return luaL_typename(L, index);
+    return lua_type(L, index);
+}
+
+extern "C" const char *lua54_typename(lua_State *L, int tp)
+{
+    return lua_typename(L, tp);
 }
 
 extern "C" void engine_createtable(lua_State *L, int narr, int nrec)
@@ -133,6 +142,11 @@ extern "C" void engine_createtable(lua_State *L, int narr, int nrec)
 extern "C" int lua54_geti(lua_State *L, int index, int64_t i)
 {
     return lua_geti(L, index, i);
+}
+
+extern "C" void lua54_seti(lua_State *L, int index, int64_t n)
+{
+    lua_seti(L, index, n);
 }
 
 extern "C" int lua54_getfield(lua_State *L, int index, const char *k)
@@ -163,6 +177,11 @@ extern "C" int engine_upvalueindex(int i)
 extern "C" void lua54_setglobal(lua_State *L, const char *name)
 {
     lua_setglobal(L, name);
+}
+
+extern "C" void lua54_replace(lua_State *L, int index)
+{
+    lua_replace(L, index);
 }
 
 extern "C" void engine_pop(lua_State *L, int n)

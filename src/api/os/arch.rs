@@ -1,8 +1,6 @@
-use std::ffi::c_int;
+use lua54::{Error, Frame, FuncState};
 
-use lua54::Engine;
-
-pub fn entry(en: &mut Engine) -> c_int {
+pub fn entry(lua: &mut FuncState) -> Result<(), Error> {
     let v = if cfg!(target_arch = "x86_64") {
         c"x86_64"
     } else if cfg!(target_arch = "aarch64") {
@@ -11,6 +9,6 @@ pub fn entry(en: &mut Engine) -> c_int {
         todo!()
     };
 
-    en.push_string(v);
-    1
+    lua.push_string(v);
+    Ok(())
 }

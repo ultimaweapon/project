@@ -1,13 +1,11 @@
+use self::manifest::{ArgType, Project};
+use clap::{Arg, ArgAction, ArgMatches, Command};
+use erdp::ErrorDisplay;
+use lua54::{FixedRet, Frame, RootState};
+use rustc_hash::FxHashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{ExitCode, Termination};
-
-use clap::{Arg, ArgAction, ArgMatches, Command};
-use erdp::ErrorDisplay;
-use lua54::Engine;
-use rustc_hash::FxHashMap;
-
-use self::manifest::{ArgType, Project};
 
 mod api;
 mod manifest;
@@ -83,42 +81,36 @@ fn main() -> Exit {
 
 fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     // Register "os" library.
-    let mut en = Engine::new();
+    let mut lua = RootState::new();
+    let mut t = lua.require_os();
 
-    en.require_os();
+    t.set(c"exit").push_nil();
+    t.set(c"setlocale").push_nil();
 
-    // Remove "exit" and "setlocale".
-    en.push_nil();
-    unsafe { en.set_field(-2, c"exit") };
-    en.push_nil();
-    unsafe { en.set_field(-2, c"setlocale") };
-
-    // Register "os" APIs.
-    crate::api::os::register(&mut en);
-    unsafe { en.pop() };
-
-    // Register "buffer" APIs.
-    crate::api::buffer::register(&mut en);
+    crate::api::os::register(t);
+    crate::api::buffer::register(&mut lua);
 
     // Load script.
-    match en.load(&script) {
-        Ok(true) => (),
-        Ok(false) => return Exit::LoadScript(unsafe { en.pop_string_lossy().unwrap() }),
+    let chunk = match lua.load_file(&script) {
+        Ok(Ok(v)) => v,
+        Ok(Err(e)) => return Exit::LoadScript(e.get().to_string_lossy().into_owned()),
         Err(e) => return Exit::ReadScript(script, e),
-    }
+    };
 
     // Run the script.
-    if !unsafe { en.run(0, 1, 0) } {
-        return Exit::RunScript(unsafe { en.pop_string_lossy().unwrap() });
-    }
+    let r = match chunk.call::<FixedRet<1, _>>() {
+        Ok(v) => v,
+        Err(e) => return Exit::RunScript(e.get().to_string_lossy().into_owned()),
+    };
 
     // Get result.
-    let r = if let Some(v) = unsafe { en.pop_int() } {
+    let i = 1.try_into().unwrap();
+    let r = if let Some(v) = r.to_int(i) {
         v
-    } else if let Some(_) = unsafe { en.pop_nil() } {
+    } else if r.to_nil(i).is_some() {
         return Exit::ScriptResult(0);
     } else {
-        return Exit::InvalidResult(unsafe { en.pop_type() });
+        return Exit::InvalidResult(r.to_type(i).into());
     };
 
     match r {

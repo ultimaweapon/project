@@ -1,14 +1,12 @@
-use lua54::Engine;
-
 use self::new::new;
+use lua54::{Frame, RootState};
 
 mod new;
 
-pub fn register(en: &mut Engine) {
-    // new
-    en.push_table(0, 1);
-    en.push_fn(new);
-    unsafe { en.set_field(-2, c"new") };
+pub fn register(lua: &mut RootState) {
+    // Buffer
+    let mut g = lua.set_global(c"Buffer");
+    let mut t = g.push_table(0, 1);
 
-    unsafe { en.set_global(c"Buffer") };
+    t.set(c"new").push_fn(new);
 }

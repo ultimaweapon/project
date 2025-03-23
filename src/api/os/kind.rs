@@ -1,8 +1,6 @@
-use std::ffi::c_int;
+use lua54::{Error, Frame, FuncState};
 
-use lua54::Engine;
-
-pub fn entry(en: &mut Engine) -> c_int {
+pub fn entry(lua: &mut FuncState) -> Result<(), Error> {
     let v = if cfg!(target_os = "windows") {
         c"windows"
     } else if cfg!(target_os = "macos") {
@@ -13,6 +11,6 @@ pub fn entry(en: &mut Engine) -> c_int {
         todo!()
     };
 
-    en.push_string(v);
-    1
+    lua.push_string(v);
+    Ok(())
 }

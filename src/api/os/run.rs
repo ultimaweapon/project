@@ -1,63 +1,56 @@
+use lua54::{Error, FuncState, Value};
 use std::borrow::Cow;
-use std::ffi::c_int;
 use std::process::Command;
 
-use lua54::{Engine, LuaError, Type};
-
-pub fn entry(en: &mut Engine) -> c_int {
+pub fn entry(lua: &mut FuncState) -> Result<(), Error> {
     // Get options.
-    let opts = if let Some(v) = unsafe { en.to_string(1) } {
-        let prog = match v.to_str() {
-            Ok(v) => v.into(),
-            Err(_) => en.arg_error(1, c"not UTF-8 string"),
-        };
+    let opts = if let Some(v) = lua.try_string(1) {
+        let prog = v.to_str().map_err(|e| Error::arg_from_std(1, e))?;
 
-        Options { prog }
-    } else if unsafe { en.is_table(1) } {
-        let prog = match unsafe { en.get_index(1, 1) } {
-            Type::String => match unsafe { en.pop_string().unwrap().into_string() } {
-                Ok(v) => v.into(),
-                Err(_) => en.arg_error(1, c"not UTF-8 string at table index #1"),
+        Options {
+            prog: Cow::Borrowed(prog),
+        }
+    } else if let Some(mut v) = lua.try_table(1) {
+        let prog = match v.get(1) {
+            Value::String(s) => match s.get().to_str() {
+                Ok(v) => Cow::Owned(v.into()),
+                Err(_) => return Err(Error::arg(1, c"not UTF-8 string at table index #1")),
             },
-            _ => en.arg_error(1, c"expect string at table index #1"),
+            _ => return Err(Error::arg(1, c"expect string at table index #1")),
         };
 
         Options { prog }
     } else {
-        en.arg_invalid_type(1, c"string or table")
+        return Err(Error::ty(1, c"string or table"));
     };
 
     // Get arguments.
     let mut cmd = Command::new(opts.prog.as_ref());
 
-    for i in 2..=en.top() {
+    for i in 2..=lua.args() {
         // Skip nil.
-        if unsafe { en.is_nil(i) } {
+        if lua.is_nil(i) {
             continue;
         }
 
         // Push arguments.
-        match en.arg_string(i).to_str() {
+        match lua.get_string(i).to_str() {
             Ok(v) => cmd.arg(v),
-            Err(_) => en.arg_error(i, c"not UTF-8 string"),
+            Err(e) => return Err(Error::arg_from_std(i, e)),
         };
     }
 
     // Run.
     let status = match cmd.status() {
         Ok(v) => v,
-        Err(e) => en.error(LuaError::with_source(
-            format!("failed to run '{}'", opts.prog),
-            &e,
-        )),
+        Err(e) => return Err((format!("failed to run '{}'", opts.prog), e).into()),
     };
 
     if !status.success() {
-        let m = format!("'{}' exited with an error ({})", opts.prog, status);
-        en.error(LuaError::new(m));
+        return Err(format!("'{}' exited with an error ({})", opts.prog, status).into());
     }
 
-    0
+    Ok(())
 }
 
 struct Options<'a> {

@@ -1,19 +1,11 @@
-use lua54::Engine;
+use lua54::{Frame, Table};
 
 mod arch;
 mod kind;
 mod run;
 
-pub fn register(en: &mut Engine) {
-    // os.arch()
-    en.push_fn(self::arch::entry);
-    unsafe { en.set_field(-2, c"arch") };
-
-    // os.kind()
-    en.push_fn(self::kind::entry);
-    unsafe { en.set_field(-2, c"kind") };
-
-    // os.run()
-    en.push_fn(self::run::entry);
-    unsafe { en.set_field(-2, c"run") };
+pub fn register<P: Frame>(mut t: Table<P>) {
+    t.set(c"arch").push_fn(self::arch::entry);
+    t.set(c"kind").push_fn(self::kind::entry);
+    t.set(c"run").push_fn(self::run::entry);
 }

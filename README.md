@@ -80,17 +80,7 @@ Hello, world!
 
 ## Script API
 
-Lua [standard libraries](https://www.lua.org/manual/5.4/manual.html#6) are available except `debug` and `package`. The `os` library also has `exit` and `setlocale` removed. Note that Lua version is 5.4 **without** compatibility with the previous version. The following is a list of what differences from Lua 5.4 when compatibility enabled:
-
-- Some `math` functions has been removed:
-  - `atan2`
-  - `cosh`
-  - `sinh`
-  - `tanh`
-  - `pow`
-  - `frexp`
-  - `ldexp`
-  - `log10`
+Lua [standard libraries](https://www.lua.org/manual/5.4/manual.html#6) are available except `debug` and `package`. The `os` library also has `exit` and `setlocale` removed. Note that Lua version is 5.4 **without** compatibility with the previous version. You can see the list of the differences [here](https://www.lua.org/manual/5.4/manual.html#8).
 
 ### os.arch()
 
