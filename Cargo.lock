@@ -316,7 +316,6 @@ version = "0.1.0"
 dependencies = [
  "cc",
  "lua54-sys",
- "thiserror 2.0.12",
 ]
 
 [[package]]
