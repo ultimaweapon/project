@@ -10,6 +10,28 @@ Project is a cross-platform CLI program to execute commands defined in the `Proj
 - Single executable with only system dependencies.
 - Lua 5.4 as scripting language.
 
+## Installation
+
+If you have Rust installed you can use [cargo install](https://doc.rust-lang.org/cargo/commands/cargo-install.html) to install Project:
+
+```sh
+cargo install --git https://github.com/ultimaweapon/project.git
+```
+
+Try running Project to see if you have Cargo installation directory in the `PATH`:
+
+```sh
+project
+```
+
+It should output something like:
+
+```
+Failed to open Project.yml: No such file or directory (os error 2).
+```
+
+If it error with command not found you need to add Cargo installation directory to `PATH` manually. You can find this directory in the outputs of `cargo install` on the above.
+
 ## Quick start
 
 Create `Project.yml` in the root of your repository with the following content:
