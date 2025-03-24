@@ -1,5 +1,5 @@
 use self::new::new;
-use lua54::{Frame, RootState};
+use zl::{Frame, RootState};
 
 mod new;
 

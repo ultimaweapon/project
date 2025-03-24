@@ -1,6 +1,6 @@
-use lua54::{Error, FuncState, Value};
 use std::borrow::Cow;
 use std::process::Command;
+use zl::{Error, FuncState, Value};
 
 pub fn entry(lua: &mut FuncState) -> Result<(), Error> {
     // Get options.

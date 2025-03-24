@@ -166,16 +166,6 @@ Return value from Lua script is not either nil or integer.
 
 Return value from Lua script is integer outside 0 - 99.
 
-## Development
-
-### Generate compile_commands.json (Linux and macOS)
-
-This step is required for [clangd](https://clangd.llvm.org/) to work properly. Install [Bear](https://github.com/rizsotto/Bear) then run the following command:
-
-```sh
-bear -- cargo build
-```
-
 ## License
 
 This project is licensed under either of

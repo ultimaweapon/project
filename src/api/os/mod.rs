@@ -1,4 +1,4 @@
-use lua54::{Frame, Table};
+use zl::{Frame, Table};
 
 mod arch;
 mod kind;

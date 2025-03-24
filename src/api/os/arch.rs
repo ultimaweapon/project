@@ -1,4 +1,4 @@
-use lua54::{Error, Frame, FuncState};
+use zl::{Error, Frame, FuncState};
 
 pub fn entry(lua: &mut FuncState) -> Result<(), Error> {
     let v = if cfg!(target_arch = "x86_64") {

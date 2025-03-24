@@ -1,4 +1,4 @@
-use lua54::{Error, FuncState};
+use zl::{Error, FuncState};
 
 pub fn new(_: &mut FuncState) -> Result<(), Error> {
     Ok(())
