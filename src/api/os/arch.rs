@@ -1,14 +1,14 @@
-use zl::{Error, Frame, FuncState};
+use zl::{Context, Error, Frame};
 
-pub fn entry(lua: &mut FuncState) -> Result<(), Error> {
+pub fn entry(cx: &mut Context) -> Result<(), Error> {
     let v = if cfg!(target_arch = "x86_64") {
-        c"x86_64"
+        "x86_64"
     } else if cfg!(target_arch = "aarch64") {
-        c"aarch64"
+        "aarch64"
     } else {
         todo!()
     };
 
-    lua.push_string(v);
+    cx.push_str(v);
     Ok(())
 }

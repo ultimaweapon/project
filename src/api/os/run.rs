@@ -1,43 +1,35 @@
 use std::borrow::Cow;
 use std::process::Command;
-use zl::{Error, FuncState, Value};
+use zl::{Context, Error, Value};
 
-pub fn entry(lua: &mut FuncState) -> Result<(), Error> {
+pub fn entry(cx: &mut Context) -> Result<(), Error> {
     // Get options.
-    let opts = if let Some(v) = lua.try_string(1) {
-        let prog = v.to_str().map_err(|e| Error::arg_from_std(1, e))?;
-
+    let opts = if let Some(prog) = cx.try_str(1) {
         Options {
             prog: Cow::Borrowed(prog),
         }
-    } else if let Some(mut v) = lua.try_table(1) {
-        let prog = match v.get(1) {
-            Value::String(s) => match s.get().to_str() {
+    } else if let Some(mut v) = cx.try_table(1) {
+        let key = 1;
+        let prog = match v.get(key) {
+            Value::String(s) => match s.to_str() {
                 Ok(v) => Cow::Owned(v.into()),
-                Err(_) => return Err(Error::arg(1, c"not UTF-8 string at table index #1")),
+                Err(e) => return Err(Error::arg_table_from_std(1, key, e)),
             },
-            _ => return Err(Error::arg(1, c"expect string at table index #1")),
+            v => return Err(Error::arg_table_type(1, key, "string", v)),
         };
 
         Options { prog }
     } else {
-        return Err(Error::ty(1, c"string or table"));
+        return Err(Error::arg_type(1, c"string or table"));
     };
 
     // Get arguments.
     let mut cmd = Command::new(opts.prog.as_ref());
 
-    for i in 2..=lua.args() {
-        // Skip nil.
-        if lua.is_nil(i) {
-            continue;
+    for i in 2..=cx.args() {
+        if !cx.is_nil(i) {
+            cmd.arg(cx.to_str(i));
         }
-
-        // Push arguments.
-        match lua.get_string(i).to_str() {
-            Ok(v) => cmd.arg(v),
-            Err(e) => return Err(Error::arg_from_std(i, e)),
-        };
     }
 
     // Run.

@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{ExitCode, Termination};
-use zl::{FixedRet, Frame, RootState};
+use zl::{FixedRet, Frame, Lua};
 
 mod api;
 mod manifest;
@@ -81,7 +81,7 @@ fn main() -> Exit {
 
 fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     // Register "os" library.
-    let mut lua = RootState::new();
+    let mut lua = Lua::new();
     let mut t = lua.require_os();
 
     t.set(c"exit").push_nil();
@@ -93,14 +93,14 @@ fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     // Load script.
     let chunk = match lua.load_file(&script) {
         Ok(Ok(v)) => v,
-        Ok(Err(e)) => return Exit::LoadScript(e.get().to_string_lossy().into_owned()),
+        Ok(Err(e)) => return Exit::LoadScript(e.to_c_str().to_string_lossy().into_owned()),
         Err(e) => return Exit::ReadScript(script, e),
     };
 
     // Run the script.
     let r = match chunk.call::<FixedRet<1, _>>() {
         Ok(v) => v,
-        Err(e) => return Exit::RunScript(e.get().to_string_lossy().into_owned()),
+        Err(e) => return Exit::RunScript(e.to_c_str().to_string_lossy().into_owned()),
     };
 
     // Get result.

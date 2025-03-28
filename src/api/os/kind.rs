@@ -1,16 +1,16 @@
-use zl::{Error, Frame, FuncState};
+use zl::{Context, Error, Frame};
 
-pub fn entry(lua: &mut FuncState) -> Result<(), Error> {
+pub fn entry(cx: &mut Context) -> Result<(), Error> {
     let v = if cfg!(target_os = "windows") {
-        c"windows"
+        "windows"
     } else if cfg!(target_os = "macos") {
-        c"macos"
+        "macos"
     } else if cfg!(target_os = "linux") {
-        c"linux"
+        "linux"
     } else {
         todo!()
     };
 
-    lua.push_string(v);
+    cx.push_str(v);
     Ok(())
 }

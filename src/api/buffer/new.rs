@@ -1,5 +1,5 @@
-use zl::{Error, FuncState};
+use zl::{Context, Error};
 
-pub fn new(_: &mut FuncState) -> Result<(), Error> {
+pub fn new(_: &mut Context) -> Result<(), Error> {
     Ok(())
 }
