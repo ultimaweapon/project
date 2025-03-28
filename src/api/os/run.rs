@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use zl::{Context, Error, Value};
 
 pub fn entry(cx: &mut Context) -> Result<(), Error> {
@@ -31,6 +31,8 @@ pub fn entry(cx: &mut Context) -> Result<(), Error> {
             cmd.arg(cx.to_str(i));
         }
     }
+
+    cmd.stdin(Stdio::null());
 
     // Run.
     let status = match cmd.status() {

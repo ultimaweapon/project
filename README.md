@@ -114,7 +114,7 @@ Returns kind of the OS. The value will be one of `linux`, `macos` and `windows`.
 
 ### os.run(prog [, ...])
 
-Run `prog` with the remaining arguments as its arguments. Unlike `os.execute`, this does not use OS shell to run `prog`. This function will raise an error by default if `prog` exit with non-zero code. By default, all standard streams will be inherits from Project process and working directory will be the directory that contains `Project.yml`.
+Run `prog` with the remaining arguments as its arguments. Unlike `os.execute`, this does not use OS shell to run `prog`. This function will raise an error by default if `prog` exit with non-zero code. By default, stdin will be a null stream and stdout/stderr will be inherits from Project process and working directory will be the directory that contains `Project.yml`.
 
 All `nil` in the arguments will be removed (e.g. `os.run('echo', 'abc', nil, 'def')` will invoke `echo` with only 2 arguments).
 
