@@ -80,9 +80,15 @@ fn main() -> Exit {
 }
 
 fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
-    // Register "os" library.
+    // Register standard libraries that does not require special handling.
     let mut lua = Lua::new();
-    let mut t = lua.require_os();
+
+    lua.require_base(true);
+    lua.require_coroutine(true);
+    lua.require_io(true);
+
+    // Register "os" library.
+    let mut t = lua.require_os(true);
 
     t.set(c"exit").push_nil();
     t.set(c"setlocale").push_nil();
