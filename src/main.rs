@@ -88,7 +88,10 @@ fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     t.set(c"setlocale").push_nil();
 
     crate::api::os::register(t);
+
+    // Register other APIs.
     crate::api::buffer::register(&mut lua);
+    crate::api::url::register(&mut lua);
 
     // Load script.
     let chunk = match lua.load_file(&script) {
