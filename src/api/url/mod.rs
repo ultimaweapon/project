@@ -5,6 +5,7 @@ pub fn register(lua: &mut Lua) {
     let mut g = lua.set_global(Url::name());
     let mut t = g.push_table(0, 1);
 
+    t.register_ud::<Url>();
     t.set(c"new").push_fn(Url::new);
 }
 
