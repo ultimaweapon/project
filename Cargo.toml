@@ -12,3 +12,9 @@ serde_yaml = "0.9.34"
 thiserror = "2.0.12"
 url = "2.5.4"
 zl = { git = "https://github.com/ultimaweapon/zero-lua.git" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
