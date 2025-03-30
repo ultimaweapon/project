@@ -80,6 +80,15 @@ fn main() -> Exit {
 }
 
 fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
+    // Setup Tokio.
+    let tokio = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(v) => v,
+        Err(e) => return Exit::SetupTokio(e),
+    };
+
     // Register standard libraries that does not require special handling.
     let mut lua = Lua::new();
 
@@ -93,11 +102,11 @@ fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     t.set(c"exit").push_nil();
     t.set(c"setlocale").push_nil();
 
-    crate::api::os::register(t);
+    self::api::os::register(t);
 
     // Register other APIs.
-    crate::api::buffer::register(&mut lua);
-    crate::api::url::register(&mut lua);
+    self::api::buffer::register(&mut lua);
+    self::api::url::register(&mut lua);
 
     // Load script.
     let chunk = match lua.load_file(&script) {
@@ -145,6 +154,7 @@ enum Exit {
     LoadScript(String) = 106,
     InvalidResult(&'static str) = 107,
     ResultOurOfRange(i64) = 108,
+    SetupTokio(std::io::Error) = 109,
 }
 
 impl Termination for Exit {
@@ -173,6 +183,7 @@ impl Termination for Exit {
             Self::ResultOurOfRange(v) => {
                 eprintln!("expect script to return either nil or integer between 0 - 99, got {v}")
             }
+            Self::SetupTokio(e) => eprintln!("Failed to setup Tokio: {}.", e.display()),
         }
 
         code.into()

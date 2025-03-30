@@ -176,6 +176,10 @@ Return value from Lua script is not either nil or integer.
 
 Return value from Lua script is integer outside 0 - 99.
 
+### 109
+
+Project unable to setup Tokio.
+
 ## License
 
 This project is licensed under either of
