@@ -5,7 +5,9 @@ use rustc_hash::FxHashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{ExitCode, Termination};
-use zl::{FixedRet, Frame, Lua};
+use std::rc::Rc;
+use tokio::task::LocalSet;
+use zl::{FixedRet, Frame, Lua, ThreadHandle};
 
 mod api;
 mod manifest;
@@ -80,15 +82,6 @@ fn main() -> Exit {
 }
 
 fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
-    // Setup Tokio.
-    let tokio = match tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-    {
-        Ok(v) => v,
-        Err(e) => return Exit::SetupTokio(e),
-    };
-
     // Register standard libraries that does not require special handling.
     let mut lua = Lua::new();
 
@@ -108,8 +101,25 @@ fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     self::api::buffer::register(&mut lua);
     self::api::url::register(&mut lua);
 
+    // Setup Tokio.
+    let tokio = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(v) => v,
+        Err(e) => return Exit::SetupTokio(e),
+    };
+
+    // Execute the script.
+    let local = LocalSet::new();
+    let lua = Rc::pin(lua);
+
+    local.block_on(&tokio, exec_script(lua.spawn(), script))
+}
+
+async fn exec_script(mut td: ThreadHandle, script: PathBuf) -> Exit {
     // Load script.
-    let chunk = match lua.load_file(&script) {
+    let chunk = match td.load_file(&script) {
         Ok(Ok(v)) => v,
         Ok(Err(e)) => return Exit::LoadScript(e.to_c_str().to_string_lossy().into_owned()),
         Err(e) => return Exit::ReadScript(script, e),
