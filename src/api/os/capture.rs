@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 use std::process::{Command, Stdio};
-use zl::{Context, Error, Frame, FromOption, Value};
+use zl::{Context, Error, Frame, FromOption, NonYieldable, Value};
 
-pub fn entry(cx: &mut Context) -> Result<(), Error> {
+pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
     // Get options.
     let opts = if let Some(prog) = cx.try_str(1) {
         Options {

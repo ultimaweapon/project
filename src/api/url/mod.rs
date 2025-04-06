@@ -1,4 +1,4 @@
-use zl::{Context, Error, Frame, Lua, UserData, class};
+use zl::{Context, Error, Frame, Lua, NonYieldable, UserData, class};
 
 pub fn register(lua: &mut Lua) {
     // Url class.
@@ -13,7 +13,7 @@ pub fn register(lua: &mut Lua) {
 struct Url(url::Url);
 
 impl Url {
-    fn new(cx: &mut Context) -> Result<(), Error> {
+    fn new(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
         let url = url::Url::parse(cx.to_str(2)).map_err(|e| Error::arg_from_std(2, e))?;
 
         cx.push_ud(Self(url));
@@ -24,7 +24,7 @@ impl Url {
 
 #[class]
 impl Url {
-    fn path(&self, cx: &mut Context) -> Result<(), Error> {
+    fn path(&self, cx: &mut Context<NonYieldable>) -> Result<(), Error> {
         cx.push_str(self.0.path());
         Ok(())
     }

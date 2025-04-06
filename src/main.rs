@@ -5,9 +5,8 @@ use rustc_hash::FxHashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{ExitCode, Termination};
-use std::rc::Rc;
 use tokio::task::LocalSet;
-use zl::{FixedRet, Frame, Lua, ThreadHandle};
+use zl::{Async, AsyncThread, Frame, Lua};
 
 mod api;
 mod manifest;
@@ -112,12 +111,12 @@ fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
 
     // Execute the script.
     let local = LocalSet::new();
-    let lua = Rc::pin(lua);
+    let lua = lua.into_async();
 
     local.block_on(&tokio, exec_script(lua.spawn(), script))
 }
 
-async fn exec_script(mut td: ThreadHandle, script: PathBuf) -> Exit {
+async fn exec_script(mut td: AsyncThread, script: PathBuf) -> Exit {
     // Load script.
     let chunk = match td.load_file(&script) {
         Ok(Ok(v)) => v,
@@ -126,19 +125,22 @@ async fn exec_script(mut td: ThreadHandle, script: PathBuf) -> Exit {
     };
 
     // Run the script.
-    let r = match chunk.call::<FixedRet<1, _>>() {
-        Ok(v) => v,
-        Err(e) => return Exit::RunScript(e.to_c_str().to_string_lossy().into_owned()),
+    let mut chunk = chunk.into_async();
+    let r = loop {
+        match chunk.resume().await {
+            Ok(Async::Yield(_)) => (),
+            Ok(Async::Finish(v)) => break v,
+            Err(e) => return Exit::RunScript(e.to_c_str().to_string_lossy().into_owned()),
+        }
     };
 
     // Get result.
-    let i = 1.try_into().unwrap();
-    let r = if let Some(v) = r.to_int(i) {
-        v
-    } else if r.to_nil(i).is_some() {
+    let r = if r.len() == 0 {
         return Exit::ScriptResult(0);
+    } else if let Some(v) = r.to_int(1) {
+        v
     } else {
-        return Exit::InvalidResult(r.to_type(i).into());
+        return Exit::InvalidResult(r.to_type(1).into());
     };
 
     match r {
@@ -188,7 +190,7 @@ impl Termination for Exit {
             }
             Self::LoadScript(v) => eprintln!("{v}"),
             Self::InvalidResult(v) => {
-                eprintln!("expect script to return either nil or integer, got {v}")
+                eprintln!("expect script to return an integer, got {v}")
             }
             Self::ResultOurOfRange(v) => {
                 eprintln!("expect script to return either nil or integer between 0 - 99, got {v}")

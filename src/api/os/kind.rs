@@ -1,6 +1,6 @@
-use zl::{Context, Error, Frame};
+use zl::{Context, Error, Frame, NonYieldable};
 
-pub fn entry(cx: &mut Context) -> Result<(), Error> {
+pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
     let v = if cfg!(target_os = "windows") {
         "windows"
     } else if cfg!(target_os = "macos") {
