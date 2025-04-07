@@ -1,8 +1,9 @@
 use std::borrow::Cow;
-use std::process::{Command, Stdio};
-use zl::{Context, Error, Frame, FromOption, NonYieldable, Value};
+use std::process::Stdio;
+use tokio::process::Command;
+use zl::{Context, Error, Frame, FromOption, Value, Yieldable};
 
-pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
+pub async fn entry(cx: &mut Context<'_, Yieldable>) -> Result<(), Error> {
     // Get options.
     let opts = if let Some(prog) = cx.try_str(1) {
         Options {
@@ -58,10 +59,13 @@ pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
     }
 
     // Run.
-    let mut r = match cmd.output() {
-        Ok(v) => v,
-        Err(e) => return Err((format!("failed to run '{}'", opts.prog), e).into()),
-    };
+    let p = cmd
+        .spawn()
+        .map_err(|e| (format!("failed to run '{}'", opts.prog), e))?;
+    let mut r = p
+        .wait_with_output()
+        .await
+        .map_err(|e| (format!("failed to wait '{}'", opts.prog), e))?;
 
     if !r.status.success() {
         return Err(format!("'{}' exited with an error ({})", opts.prog, r.status).into());
