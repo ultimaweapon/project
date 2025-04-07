@@ -7,7 +7,7 @@ pub fn register(lua: &mut Lua) {
 /// Implementation of `Url` class.
 struct Url(url::Url);
 
-#[class]
+#[class(global)]
 impl Url {
     #[class]
     fn new(cx: &mut Context<NonYieldable>) -> Result<(), Error> {

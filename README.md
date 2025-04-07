@@ -9,6 +9,7 @@ Project is a cross-platform CLI program to execute commands defined in the `Proj
 - Easy to install on all platforms.
 - Single executable with only system dependencies.
 - Lua 5.4 as scripting language.
+- Non-blocking concurrent execution with Lua coroutine.
 
 ## Installation
 
@@ -129,6 +130,22 @@ If `prog` is a table the item at index #1 must be the name of program to run and
 #### from
 
 Can be either `stdout`, `stderr` or `both`. If this key does not present it will default to `stdout`. With `both` this function will return a table contains `stdout` and `stderr` fields.
+
+### os.spawn(prog [, ...])
+
+Run `prog` with the remaining arguments as its arguments and return an object to manipulate it. This does not use OS shell to run `prog`. By default, stdin will be a null stream and a non-captured stream will be inherits from Project process. Working directory will be the directory that contains `Project.yml` by default.
+
+All `nil` in the arguments will be removed (e.g. `os.spawn('echo', 'abc', nil, 'def')` will spawn `echo` with only 2 arguments).
+
+If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following items:
+
+#### cwd
+
+Working directory for the process. If this key does not present it will default to the directory that contains `Project.yml`.
+
+#### stdout
+
+Can be either `null`, `inherit` or `pipe`. If this key does not present it will default to `inherit`.
 
 ## Exit code
 
