@@ -13,9 +13,3 @@ thiserror = "2.0.12"
 tokio = { version = "1.44.1", features = ["rt"] }
 url = "2.5.4"
 zl = { git = "https://github.com/ultimaweapon/zero-lua.git" }
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"

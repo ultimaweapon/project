@@ -87,6 +87,7 @@ fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     lua.require_base(true);
     lua.require_coroutine(true);
     lua.require_io(true);
+    lua.require_math(true);
 
     // Register "os" library.
     let mut t = lua.require_os(true);

@@ -181,6 +181,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
+name = "cpplink"
+version = "0.1.0"
+source = "git+https://github.com/ultimaweapon/zero-lua.git#847947fa5f4443b9e1ddd9d04fab12f1e8e14390"
+
+[[package]]
 name = "crc32fast"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1262,9 +1267,10 @@ dependencies = [
 [[package]]
 name = "zl"
 version = "0.1.0"
-source = "git+https://github.com/ultimaweapon/zero-lua.git#676f31c0d0bee5b03dc30d5fdcb4384e574b412d"
+source = "git+https://github.com/ultimaweapon/zero-lua.git#847947fa5f4443b9e1ddd9d04fab12f1e8e14390"
 dependencies = [
  "cc",
+ "cpplink",
  "zl-macros",
  "zl-sys",
 ]
@@ -1272,7 +1278,7 @@ dependencies = [
 [[package]]
 name = "zl-macros"
 version = "0.1.0"
-source = "git+https://github.com/ultimaweapon/zero-lua.git#676f31c0d0bee5b03dc30d5fdcb4384e574b412d"
+source = "git+https://github.com/ultimaweapon/zero-lua.git#847947fa5f4443b9e1ddd9d04fab12f1e8e14390"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1282,7 +1288,7 @@ dependencies = [
 [[package]]
 name = "zl-sys"
 version = "0.1.0"
-source = "git+https://github.com/ultimaweapon/zero-lua.git#676f31c0d0bee5b03dc30d5fdcb4384e574b412d"
+source = "git+https://github.com/ultimaweapon/zero-lua.git#847947fa5f4443b9e1ddd9d04fab12f1e8e14390"
 dependencies = [
  "cc",
  "flate2",
