@@ -1,4 +1,4 @@
-use self::manifest::{ArgType, Project};
+use self::manifest::{ArgType, CommandArg, Project};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;
 use rustc_hash::FxHashMap;
@@ -32,28 +32,20 @@ fn main() -> Exit {
     let mut actions = FxHashMap::default();
 
     for (name, def) in manifest.commands {
-        // Get command action.
-        let mut cmd = Command::new(&name).about(def.description);
-        let action = if let Some(v) = def.script {
-            CommandAction::Script(v.into())
-        } else {
-            return Exit::NoCommandAction(name);
-        };
-
-        assert!(actions.insert(name, action).is_none());
-
         // Add command arguments.
-        for (id, def) in def.args {
-            let mut arg = Arg::new(&id)
-                .help(def.description)
-                .value_name(def.placeholder.unwrap_or_else(|| id.to_uppercase()));
+        let mut cmd = Command::new(&name).about(def.description);
+
+        for (id, def) in &def.args {
+            let mut arg = Arg::new(id)
+                .help(&def.description)
+                .value_name(def.placeholder.clone().unwrap_or_else(|| id.to_uppercase()));
 
             match def.ty {
                 ArgType::Bool => arg = arg.action(ArgAction::SetTrue),
                 ArgType::String => (),
             }
 
-            if let Some(v) = def.long {
+            if let Some(v) = &def.long {
                 arg = arg.long(v);
             }
 
@@ -61,28 +53,40 @@ fn main() -> Exit {
                 arg = arg.short(v);
             }
 
-            if let Some(v) = def.default {
+            if let Some(v) = &def.default {
                 arg = arg.default_missing_value(v).num_args(0..=1);
             }
 
             cmd = cmd.arg(arg);
         }
 
+        // Get command action.
+        let action = if let Some(v) = def.script {
+            CommandAction::Script(v.into(), def.args)
+        } else {
+            return Exit::NoCommandAction(name);
+        };
+
+        assert!(actions.insert(name, action).is_none());
+
         parser = parser.subcommand(cmd);
     }
 
     // Execute command.
-    let args = parser.get_matches();
-    let (cmd, args) = args.subcommand().unwrap();
+    let mut args = parser.get_matches();
+    let (cmd, args) = args.remove_subcommand().unwrap();
 
-    match actions.remove(cmd).unwrap() {
-        CommandAction::Script(script) => run_script(script, args),
+    match actions.remove(&cmd).unwrap() {
+        CommandAction::Script(script, defs) => run_script(script, defs, args),
     }
 }
 
-fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
+fn run_script(script: PathBuf, defs: FxHashMap<String, CommandArg>, args: ArgMatches) -> Exit {
     // Register standard libraries that does not require special handling.
-    let mut lua = Lua::new();
+    let mut lua = match Lua::new() {
+        Some(v) => v,
+        None => return Exit::CreateLua,
+    };
 
     lua.require_base(true);
     lua.require_coroutine(true);
@@ -90,6 +94,7 @@ fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     lua.require_math(true);
     lua.require_string(true);
     lua.require_table(true);
+    lua.require_utf8(true);
 
     // Register "os" library.
     let mut t = lua.require_os(true);
@@ -100,6 +105,7 @@ fn run_script(script: PathBuf, _: &ArgMatches) -> Exit {
     self::api::os::register(t);
 
     // Register other APIs.
+    self::api::args::register(&mut lua, defs, args);
     self::api::buffer::register(&mut lua);
     self::api::url::register(&mut lua);
 
@@ -123,17 +129,17 @@ async fn exec_script(mut td: AsyncThread, script: PathBuf) -> Exit {
     // Load script.
     let chunk = match td.load_file(&script) {
         Ok(Ok(v)) => v,
-        Ok(Err(e)) => return Exit::LoadScript(e.to_c_str().to_string_lossy().into_owned()),
+        Ok(Err(mut e)) => return Exit::LoadScript(e.to_c_str().to_string_lossy().into_owned()),
         Err(e) => return Exit::ReadScript(script, e),
     };
 
     // Run the script.
     let mut chunk = chunk.into_async();
-    let r = loop {
+    let mut r = loop {
         match chunk.resume().await {
             Ok(Async::Yield(_)) => (),
             Ok(Async::Finish(v)) => break v,
-            Err(e) => return Exit::RunScript(e.to_c_str().to_string_lossy().into_owned()),
+            Err(mut e) => return Exit::RunScript(e.to_c_str().to_string_lossy().into_owned()),
         }
     };
 
@@ -154,7 +160,7 @@ async fn exec_script(mut td: AsyncThread, script: PathBuf) -> Exit {
 
 /// Action of a command.
 enum CommandAction {
-    Script(PathBuf),
+    Script(PathBuf, FxHashMap<String, CommandArg>),
 }
 
 /// Exit code of Project.
@@ -170,6 +176,7 @@ enum Exit {
     InvalidResult(&'static str) = 107,
     ResultOurOfRange(i64) = 108,
     SetupTokio(std::io::Error) = 109,
+    CreateLua = 110,
 }
 
 impl Termination for Exit {
@@ -199,6 +206,7 @@ impl Termination for Exit {
                 eprintln!("expect script to return either nil or integer between 0 - 99, got {v}")
             }
             Self::SetupTokio(e) => eprintln!("Failed to setup Tokio: {}.", e.display()),
+            Self::CreateLua => eprintln!("Failed to create lua_State."),
         }
 
         code.into()

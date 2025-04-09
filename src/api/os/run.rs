@@ -11,7 +11,7 @@ pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
     } else if let Some(mut v) = cx.try_table(1) {
         let key = 1;
         let prog = match v.get(key) {
-            Value::String(s) => match s.to_str() {
+            Value::String(mut s) => match s.to_str() {
                 Ok(v) => Cow::Owned(v.into()),
                 Err(e) => return Err(Error::arg_table_from_std(1, key, e)),
             },

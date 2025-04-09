@@ -53,7 +53,11 @@ commands:
 Then create `scripts/build.lua` with the following content:
 
 ```lua
-print('Hello, world!')
+if args:get('release') then
+  print('Start building release build!')
+else
+  print('Start building debug build!')
+end
 ```
 
 Then run:
@@ -98,12 +102,20 @@ Options:
 If you run `project build` it will run `scripts/build.lua`, which output the following text to the console:
 
 ```
-Hello, world!
+Start building debug build!
 ```
 
 ## Script API
 
 Lua [standard libraries](https://www.lua.org/manual/5.4/manual.html#6) are available except `debug` and `package`. The `os` library also has `exit` and `setlocale` removed. Note that Lua version is 5.4 **without** compatibility with the previous version. You can see the list of the differences [here](https://www.lua.org/manual/5.4/manual.html#8).
+
+### args
+
+Global object contains all command arguments. This object has the following methods:
+
+#### args:get(name)
+
+Returns the value of argument `name`. If argument does not present it will return `false` for `bool` argument or `nil` for the other type.
 
 ### os.arch()
 
@@ -196,6 +208,10 @@ Return value from Lua script is integer outside 0 - 99.
 ### 109
 
 Project unable to setup Tokio.
+
+### 110
+
+Project unable to create `lua_State`.
 
 ## License
 

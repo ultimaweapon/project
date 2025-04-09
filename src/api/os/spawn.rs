@@ -17,7 +17,7 @@ pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
         // Program.
         let key = 1;
         let prog = match t.get(key) {
-            Value::String(s) => s
+            Value::String(mut s) => s
                 .to_str()
                 .map_err(|e| Error::arg_table_from_std(1, key, e))
                 .map(|v| Cow::Owned(v.into()))?,
@@ -28,7 +28,7 @@ pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
         let key = c"cwd";
         let cwd = match t.get(key) {
             Value::Nil(_) => None,
-            Value::String(v) => v
+            Value::String(mut v) => v
                 .to_str()
                 .map_err(|e| Error::arg_table_from_std(1, key, e))?
                 .to_owned()
@@ -40,7 +40,7 @@ pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
         let key = c"stdout";
         let stdout = match t.get(key) {
             Value::Nil(_) => Stream::Inherit,
-            Value::String(v) => v.to_option().map_err(|e| Error::arg_table(1, key, e))?,
+            Value::String(mut v) => v.to_option().map_err(|e| Error::arg_table(1, key, e))?,
             v => return Err(Error::arg_table_type(1, key, "string", v)),
         };
 
