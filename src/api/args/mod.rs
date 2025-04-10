@@ -1,8 +1,11 @@
 use crate::manifest::{ArgType, CommandArg};
 use clap::ArgMatches;
 use rustc_hash::FxHashMap;
+use std::any::type_name;
+use std::ffi::{CStr, CString};
 use std::panic::AssertUnwindSafe;
-use zl::{Context, Error, Frame, Lua, class};
+use std::sync::LazyLock;
+use zl::{Context, Error, Frame, Lua, Table, UserData};
 
 pub fn register(lua: &mut Lua, defs: FxHashMap<String, CommandArg>, args: ArgMatches) {
     assert!(lua.register_ud::<Args>());
@@ -19,7 +22,6 @@ struct Args {
     vals: AssertUnwindSafe<ArgMatches>,
 }
 
-#[class]
 impl Args {
     fn get(&self, cx: &mut Context) -> Result<(), Error> {
         let name = cx.to_str(2);
@@ -40,5 +42,18 @@ impl Args {
         }
 
         Ok(())
+    }
+}
+
+impl UserData for Args {
+    fn name() -> &'static CStr {
+        static NAME: LazyLock<CString> =
+            LazyLock::new(|| CString::new(type_name::<Args>()).unwrap());
+
+        NAME.as_c_str()
+    }
+
+    fn setup_metatable<P: Frame>(t: &mut Table<P>) {
+        t.set(c"__index").push_fn(|cx| cx.to_ud::<Self>(1).get(cx));
     }
 }

@@ -53,7 +53,7 @@ commands:
 Then create `scripts/build.lua` with the following content:
 
 ```lua
-if args:get('release') then
+if args['release'] then
   print('Start building release build!')
 else
   print('Start building debug build!')
@@ -109,13 +109,9 @@ Start building debug build!
 
 Lua [standard libraries](https://www.lua.org/manual/5.4/manual.html#6) are available except `debug` and `package`. The `os` library also has `exit` and `setlocale` removed. Note that Lua version is 5.4 **without** compatibility with the previous version. You can see the list of the differences [here](https://www.lua.org/manual/5.4/manual.html#8).
 
-### args
+### args[name]
 
-Global object contains all command arguments. This object has the following methods:
-
-#### args:get(name)
-
-Returns the value of argument `name`. If argument does not present it will return `false` for `bool` argument or `nil` for the other type.
+A global variable contains all command arguments. If argument `name` does not present it will return `false` for `bool` argument or `nil` for the other type.
 
 ### os.arch()
 
