@@ -1,0 +1,20 @@
+name: Build Project
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-20.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+    - name: Install Project
+      run: cargo install --path .
