@@ -27,8 +27,10 @@ fn main() -> Exit {
 
     // Build arguments parser.
     let mut parser = Command::new("Project")
-        .about("Run a command defined in Project.yml")
-        .subcommand_required(true);
+        .about(env!("CARGO_PKG_DESCRIPTION"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .subcommand_required(true)
+        .disable_help_subcommand(true);
     let mut actions = FxHashMap::default();
 
     for (name, def) in manifest.commands {

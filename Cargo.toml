@@ -1,6 +1,8 @@
 [package]
 name = "project"
+description = "Run a command defined in Project.yml"
 version = "0.1.0"
+repository = "https://github.com/ultimaweapon/project"
 edition = "2024"
 
 [dependencies]
