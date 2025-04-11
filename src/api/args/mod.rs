@@ -1,4 +1,4 @@
-use crate::manifest::{ArgType, CommandArg};
+use crate::manifest::{ArgName, ArgType, CommandArg};
 use clap::ArgMatches;
 use rustc_hash::FxHashMap;
 use std::any::type_name;
@@ -7,7 +7,7 @@ use std::panic::AssertUnwindSafe;
 use std::sync::LazyLock;
 use zl::{Context, Error, Frame, Lua, Table, UserData};
 
-pub fn register(lua: &mut Lua, defs: FxHashMap<String, CommandArg>, args: ArgMatches) {
+pub fn register(lua: &mut Lua, defs: FxHashMap<ArgName, CommandArg>, args: ArgMatches) {
     assert!(lua.register_ud::<Args>());
 
     lua.set_global(c"args").push_ud(Args {
@@ -18,7 +18,7 @@ pub fn register(lua: &mut Lua, defs: FxHashMap<String, CommandArg>, args: ArgMat
 
 /// Class of the global variable `args`.
 struct Args {
-    defs: FxHashMap<String, CommandArg>,
+    defs: FxHashMap<ArgName, CommandArg>,
     vals: AssertUnwindSafe<ArgMatches>,
 }
 

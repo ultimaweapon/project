@@ -1,4 +1,4 @@
-use self::manifest::{ArgType, CommandArg, Project, ScriptPath};
+use self::manifest::{ArgName, ArgType, CommandArg, Project, ScriptPath};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;
 use rustc_hash::FxHashMap;
@@ -38,7 +38,7 @@ fn main() -> Exit {
         let mut cmd = Command::new(&name).about(def.description);
 
         for (id, def) in &def.args {
-            let mut arg = Arg::new(id)
+            let mut arg = Arg::new(id.as_ref().to_owned())
                 .help(&def.description)
                 .value_name(def.placeholder.clone().unwrap_or_else(|| id.to_uppercase()));
 
@@ -83,7 +83,7 @@ fn main() -> Exit {
     }
 }
 
-fn run_script(script: ScriptPath, defs: FxHashMap<String, CommandArg>, args: ArgMatches) -> Exit {
+fn run_script(script: ScriptPath, defs: FxHashMap<ArgName, CommandArg>, args: ArgMatches) -> Exit {
     // Register standard libraries that does not require special handling.
     let mut lua = match Lua::new() {
         Some(v) => v,
@@ -129,7 +129,7 @@ fn run_script(script: ScriptPath, defs: FxHashMap<String, CommandArg>, args: Arg
 
 async fn exec_script(mut td: AsyncThread, script: ScriptPath) -> Exit {
     // Load script.
-    let chunk = match td.load_file(script.as_str()) {
+    let chunk = match td.load_file(&script) {
         Ok(Ok(v)) => v,
         Ok(Err(mut e)) => return Exit::LoadScript(e.to_c_str().to_string_lossy().into_owned()),
         Err(e) => return Exit::ReadScript(script, e),
@@ -162,7 +162,7 @@ async fn exec_script(mut td: AsyncThread, script: ScriptPath) -> Exit {
 
 /// Action of a command.
 enum CommandAction {
-    Script(ScriptPath, FxHashMap<String, CommandArg>),
+    Script(ScriptPath, FxHashMap<ArgName, CommandArg>),
 }
 
 /// Exit code of Project.
