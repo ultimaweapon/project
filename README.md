@@ -209,6 +209,24 @@ Project unable to setup Tokio.
 
 Project unable to create `lua_State`.
 
+## Project.yml
+
+### commands
+
+List of commands.
+
+### commands.<command_id>
+
+A command definition.
+
+### commands.<command_id>.description
+
+Description of the command.
+
+### commands.<command_id>.script
+
+Path to Lua script to execute when this command is invoked. Path separator always is `/` even on Windows.
+
 ## License
 
 This project is licensed under either of

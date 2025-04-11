@@ -1,4 +1,4 @@
-use self::manifest::{ArgType, CommandArg, Project};
+use self::manifest::{ArgType, CommandArg, Project, ScriptPath};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;
 use rustc_hash::FxHashMap;
@@ -83,7 +83,7 @@ fn main() -> Exit {
     }
 }
 
-fn run_script(script: PathBuf, defs: FxHashMap<String, CommandArg>, args: ArgMatches) -> Exit {
+fn run_script(script: ScriptPath, defs: FxHashMap<String, CommandArg>, args: ArgMatches) -> Exit {
     // Register standard libraries that does not require special handling.
     let mut lua = match Lua::new() {
         Some(v) => v,
@@ -127,9 +127,9 @@ fn run_script(script: PathBuf, defs: FxHashMap<String, CommandArg>, args: ArgMat
     local.block_on(&tokio, exec_script(lua.spawn(), script))
 }
 
-async fn exec_script(mut td: AsyncThread, script: PathBuf) -> Exit {
+async fn exec_script(mut td: AsyncThread, script: ScriptPath) -> Exit {
     // Load script.
-    let chunk = match td.load_file(&script) {
+    let chunk = match td.load_file(script.as_str()) {
         Ok(Ok(v)) => v,
         Ok(Err(mut e)) => return Exit::LoadScript(e.to_c_str().to_string_lossy().into_owned()),
         Err(e) => return Exit::ReadScript(script, e),
@@ -162,7 +162,7 @@ async fn exec_script(mut td: AsyncThread, script: PathBuf) -> Exit {
 
 /// Action of a command.
 enum CommandAction {
-    Script(PathBuf, FxHashMap<String, CommandArg>),
+    Script(ScriptPath, FxHashMap<String, CommandArg>),
 }
 
 /// Exit code of Project.
@@ -173,7 +173,7 @@ enum Exit {
     OpenProject(PathBuf, std::io::Error) = 102, // 101 is Rust panic.
     LoadProject(PathBuf, serde_yaml::Error) = 103,
     NoCommandAction(String) = 104,
-    ReadScript(PathBuf, std::io::Error) = 105,
+    ReadScript(ScriptPath, std::io::Error) = 105,
     LoadScript(String) = 106,
     InvalidResult(&'static str) = 107,
     ResultOurOfRange(i64) = 108,
@@ -198,7 +198,7 @@ impl Termination for Exit {
             }
             Self::NoCommandAction(n) => eprintln!("No action is configured for command '{n}'."),
             Self::ReadScript(p, e) => {
-                eprintln!("Failed to read {}: {}.", p.display(), e.display())
+                eprintln!("Failed to read {}: {}.", p, e.display())
             }
             Self::LoadScript(v) => eprintln!("{v}"),
             Self::InvalidResult(v) => {

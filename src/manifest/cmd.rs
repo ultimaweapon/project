@@ -1,3 +1,4 @@
+use super::ScriptPath;
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 
@@ -7,7 +8,7 @@ pub struct Command {
     pub description: String,
     #[serde(default)]
     pub args: FxHashMap<String, CommandArg>,
-    pub script: Option<String>,
+    pub script: Option<ScriptPath>,
 }
 
 /// Command argument definition.
