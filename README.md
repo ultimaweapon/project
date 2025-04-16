@@ -133,7 +133,7 @@ Run `prog` with the remaining arguments as its arguments and return its outputs,
 
 All `nil` in the arguments will be removed (e.g. `os.capture('echo', 'abc', nil, 'def')` will invoke `echo` with only 2 arguments).
 
-If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following items:
+If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following additional items:
 
 #### from
 
@@ -141,11 +141,13 @@ Can be either `stdout`, `stderr` or `both`. If this key does not present it will
 
 ### os.spawn(prog [, ...])
 
-Run `prog` with the remaining arguments as its arguments and return an object to manipulate it. This does not use OS shell to run `prog`. By default, stdin will be a null stream and a non-captured stream will be inherits from Project process. Working directory will be the directory that contains `Project.yml` by default.
+Run `prog` with the remaining arguments as its arguments and return a process object to manipulate it. This does not use OS shell to run `prog`. By default, stdin will be a null stream and a non-captured stream will be inherits from Project process. Working directory will be the directory that contains `Project.yml` by default.
 
 All `nil` in the arguments will be removed (e.g. `os.spawn('echo', 'abc', nil, 'def')` will spawn `echo` with only 2 arguments).
 
-If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following items:
+The process object can be a [to-be-closed](https://www.lua.org/manual/5.4/manual.html#3.3.8) variable, which will kill the process when the object goes out of scope. If the variable does not have `close` attribute the process will get killed when the object is freed by Lua GC.
+
+If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following additional items:
 
 #### cwd
 
@@ -153,7 +155,7 @@ Working directory for the process. If this key does not present it will default 
 
 #### stdout
 
-Can be either `null`, `inherit` or `pipe`. If this key does not present it will default to `inherit`.
+Can be either `null`, `inherit` or `pipe`. If this key does not present it will default to `inherit`. For `pipe` the process object will have `stdout` property, which have [lines](https://www.lua.org/manual/5.4/manual.html#pdf-file:lines) and [read](https://www.lua.org/manual/5.4/manual.html#pdf-file:read) method.
 
 ## Exit code
 

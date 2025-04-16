@@ -2,10 +2,12 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::panic::AssertUnwindSafe;
 use std::process::{Child, Command, Stdio};
-use zl::{Context, Error, Frame, FromOption, NonYieldable, Value, class};
+use tokio::io::AsyncRead;
+use tokio::process::ChildStdout;
+use zl::{Context, Error, Frame, FromOption, Value, class};
 
 /// Implementation of `os.spawn`.
-pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
+pub fn entry(cx: &mut Context) -> Result<(), Error> {
     // Get options.
     let opts = if let Some(prog) = cx.try_str(1) {
         Options {
@@ -87,8 +89,29 @@ pub struct Process(AssertUnwindSafe<RefCell<Option<Child>>>);
 
 #[class]
 impl Process {
+    #[prop]
+    fn stdout(&self, cx: &mut Context) -> Result<(), Error> {
+        // Get ChildStdout.
+        let stdout = match self.0.borrow_mut().as_mut().unwrap().stdout.take() {
+            Some(v) => v,
+            None => {
+                cx.push_nil();
+                return Ok(());
+            }
+        };
+
+        // Get Tokio version.
+        let stdout = ChildStdout::from_std(stdout)
+            .map_err(|e| Error::with_source("failed to convert stdout to asynchronous", e))?;
+        let stream = OutputStream(AssertUnwindSafe(RefCell::new(Box::new(stdout))));
+
+        cx.push_ud(stream);
+
+        Ok(())
+    }
+
     #[close]
-    fn kill(&self, _: &mut Context<NonYieldable>) -> Result<(), Error> {
+    fn kill(&self, _: &mut Context) -> Result<(), Error> {
         // Check if already killed.
         let mut prog = match self.0.borrow_mut().take() {
             Some(v) => v,
@@ -116,6 +139,20 @@ impl Drop for Process {
 
         prog.kill().unwrap();
         prog.wait().unwrap();
+    }
+}
+
+/// Class of `stdout` property of the value returned from `os.spawn`.
+pub struct OutputStream(AssertUnwindSafe<RefCell<Box<dyn AsyncRead + Unpin>>>);
+
+#[class]
+impl OutputStream {
+    fn lines(&self, cx: &mut Context) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn read(&self, cx: &mut Context) -> Result<(), Error> {
+        todo!()
     }
 }
 

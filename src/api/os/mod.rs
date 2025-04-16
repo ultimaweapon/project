@@ -8,6 +8,7 @@ mod spawn;
 
 pub fn register(mut t: Table<Lua>) {
     t.register_ud::<self::spawn::Process>();
+    t.register_ud::<self::spawn::OutputStream>();
 
     t.set(c"arch").push_fn(self::arch::entry);
     t.set(c"capture").push_fn(self::capture::entry);
