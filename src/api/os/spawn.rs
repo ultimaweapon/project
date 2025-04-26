@@ -147,10 +147,6 @@ pub struct OutputStream(AssertUnwindSafe<RefCell<Box<dyn AsyncRead + Unpin>>>);
 
 #[class]
 impl OutputStream {
-    fn lines(&self, cx: &mut Context) -> Result<(), Error> {
-        todo!()
-    }
-
     fn read(&self, cx: &mut Context) -> Result<(), Error> {
         todo!()
     }
