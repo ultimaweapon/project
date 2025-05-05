@@ -802,7 +802,7 @@ dependencies = [
 [[package]]
 name = "zl"
 version = "0.1.0"
-source = "git+https://github.com/ultimaweapon/zero-lua.git#be82dcc7f99afdee6cc975750e671e27fefb588d"
+source = "git+https://github.com/ultimaweapon/zero-lua.git#daff3cc85ef711fa127fc33482a9e80129bdbeb4"
 dependencies = [
  "cc",
  "zl-macros",
@@ -812,7 +812,7 @@ dependencies = [
 [[package]]
 name = "zl-macros"
 version = "0.1.0"
-source = "git+https://github.com/ultimaweapon/zero-lua.git#be82dcc7f99afdee6cc975750e671e27fefb588d"
+source = "git+https://github.com/ultimaweapon/zero-lua.git#daff3cc85ef711fa127fc33482a9e80129bdbeb4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -822,7 +822,7 @@ dependencies = [
 [[package]]
 name = "zl-sys"
 version = "0.1.0"
-source = "git+https://github.com/ultimaweapon/zero-lua.git#be82dcc7f99afdee6cc975750e671e27fefb588d"
+source = "git+https://github.com/ultimaweapon/zero-lua.git#daff3cc85ef711fa127fc33482a9e80129bdbeb4"
 dependencies = [
  "cc",
 ]

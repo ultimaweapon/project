@@ -157,9 +157,9 @@ Working directory for the process. If this key does not present it will default 
 
 Can be either `null`, `inherit` or `pipe`. If this key does not present it will default to `inherit`. For `pipe` the process object will have `stdout` property, which have [read](https://www.lua.org/manual/5.4/manual.html#pdf-file:read) method.
 
-### Url
+### Url:new(url)
 
-`Url` is a class to parse and manipulate a URL.
+Create an instance of `Url` class from `url`.
 
 ## Exit code
 

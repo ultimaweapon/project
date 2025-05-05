@@ -65,7 +65,10 @@ pub fn entry(cx: &mut Context) -> Result<(), Error> {
         .map_err(|e| Error::with_source(format!("failed to run '{}'", opts.prog), e))?;
 
     if !r.status.success() {
-        return Err(format!("'{}' exited with an error ({})", opts.prog, r.status).into());
+        return Err(Error::other(format!(
+            "'{}' exited with an error ({})",
+            opts.prog, r.status
+        )));
     }
 
     // Set result.

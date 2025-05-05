@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::panic::AssertUnwindSafe;
 use std::process::{Child, Command, Stdio};
-use tokio::io::AsyncRead;
+use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
 use tokio::process::ChildStdout;
-use zl::{Context, Error, Frame, FromOption, PositiveInt, Value, class};
+use zl::{Context, Error, Frame, FromOption, PositiveInt, Value, Yieldable, class};
 
 /// Implementation of `os.spawn`.
 pub fn entry(cx: &mut Context) -> Result<(), Error> {
@@ -86,7 +86,7 @@ pub fn entry(cx: &mut Context) -> Result<(), Error> {
     // Set stdout.
     if let Some(v) = stdout {
         let v = match ChildStdout::from_std(v) {
-            Ok(v) => OutputStream(AssertUnwindSafe(RefCell::new(Box::new(v)))),
+            Ok(v) => OutputStream(AssertUnwindSafe(RefCell::new(BufReader::new(Box::new(v))))),
             Err(e) => {
                 return Err(Error::with_source(
                     "failed to convert stdout to asynchronous",
@@ -142,12 +142,35 @@ impl Drop for Process {
 }
 
 /// Class of `stdout` property of the value returned from `os.spawn`.
-pub struct OutputStream(AssertUnwindSafe<RefCell<Box<dyn AsyncRead + Unpin>>>);
+pub struct OutputStream(AssertUnwindSafe<RefCell<BufReader<Box<dyn AsyncRead + Unpin>>>>);
 
 #[class]
 impl OutputStream {
-    fn read(_: &mut Context) -> Result<(), Error> {
-        todo!()
+    async fn read(cx: &mut Context<'_, Yieldable>) -> Result<(), Error> {
+        // Lock stream.
+        let stream = cx.to_ud::<Self>(PositiveInt::ONE).into_ud();
+        let mut stream = stream
+            .0
+            .try_borrow_mut()
+            .map_err(|_| Error::other(c"concurrent read is not supported"))?;
+
+        // Read.
+        if cx.args() == 1 {
+            let mut line = String::new();
+            let len = stream.read_line(&mut line).await?;
+
+            if len != 0 {
+                if line.ends_with('\n') {
+                    line.pop();
+                }
+
+                cx.push_str(line);
+            }
+        } else {
+            todo!()
+        }
+
+        Ok(())
     }
 }
 
