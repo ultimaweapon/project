@@ -1,7 +1,7 @@
-use zl::{Context, Error, Frame, Lua, NonYieldable, class};
+use zl::{Context, Error, Frame, Lua, PositiveInt, class};
 
 pub fn register(lua: &mut Lua) {
-    assert!(lua.register_ud::<Url>());
+    lua.register_ud::<Url>();
 }
 
 /// Implementation of `Url` class.
@@ -10,16 +10,21 @@ struct Url(url::Url);
 #[class(global)]
 impl Url {
     #[class]
-    fn new(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
-        let url = url::Url::parse(cx.to_str(2)).map_err(|e| Error::arg_from_std(2, e))?;
+    fn new(cx: &mut Context) -> Result<(), Error> {
+        let url = cx.to_str(PositiveInt::TWO);
+        let url = url::Url::parse(url).map_err(|e| Error::arg_from_std(PositiveInt::TWO, e))?;
 
         cx.push_ud(Self(url));
 
         Ok(())
     }
 
-    fn path(&self, cx: &mut Context<NonYieldable>) -> Result<(), Error> {
-        cx.push_str(self.0.path());
+    #[prop]
+    fn path(cx: &mut Context) -> Result<(), Error> {
+        let url = cx.to_ud::<Self>(PositiveInt::ONE).into_ud();
+
+        cx.push_str(url.0.path());
+
         Ok(())
     }
 }

@@ -4,26 +4,26 @@ use std::panic::AssertUnwindSafe;
 use std::process::{Child, Command, Stdio};
 use tokio::io::AsyncRead;
 use tokio::process::ChildStdout;
-use zl::{Context, Error, Frame, FromOption, Value, class};
+use zl::{Context, Error, Frame, FromOption, PositiveInt, Value, class};
 
 /// Implementation of `os.spawn`.
 pub fn entry(cx: &mut Context) -> Result<(), Error> {
     // Get options.
-    let opts = if let Some(prog) = cx.try_str(1) {
+    let opts = if let Some(prog) = cx.try_str(PositiveInt::ONE) {
         Options {
             prog: Cow::Borrowed(prog),
             cwd: None,
             stdout: Stream::Inherit,
         }
-    } else if let Some(mut t) = cx.try_table(1) {
+    } else if let Some(mut t) = cx.try_table(PositiveInt::ONE) {
         // Program.
         let key = 1;
         let prog = match t.get(key) {
             Value::String(mut s) => s
                 .to_str()
-                .map_err(|e| Error::arg_table_from_std(1, key, e))
+                .map_err(|e| Error::arg_table_from_std(PositiveInt::ONE, key, e))
                 .map(|v| Cow::Owned(v.into()))?,
-            v => return Err(Error::arg_table_type(1, key, "string", v)),
+            v => return Err(Error::arg_table_type(PositiveInt::ONE, key, "string", v)),
         };
 
         // CWD.
@@ -32,23 +32,25 @@ pub fn entry(cx: &mut Context) -> Result<(), Error> {
             Value::Nil(_) => None,
             Value::String(mut v) => v
                 .to_str()
-                .map_err(|e| Error::arg_table_from_std(1, key, e))?
+                .map_err(|e| Error::arg_table_from_std(PositiveInt::ONE, key, e))?
                 .to_owned()
                 .into(),
-            v => return Err(Error::arg_table_type(1, key, "string", v)),
+            v => return Err(Error::arg_table_type(PositiveInt::ONE, key, "string", v)),
         };
 
         // STDOUT.
         let key = c"stdout";
         let stdout = match t.get(key) {
             Value::Nil(_) => Stream::Inherit,
-            Value::String(mut v) => v.to_option().map_err(|e| Error::arg_table(1, key, e))?,
-            v => return Err(Error::arg_table_type(1, key, "string", v)),
+            Value::String(mut v) => v
+                .to_option()
+                .map_err(|e| Error::arg_table(PositiveInt::ONE, key, e))?,
+            v => return Err(Error::arg_table_type(PositiveInt::ONE, key, "string", v)),
         };
 
         Options { prog, cwd, stdout }
     } else {
-        return Err(Error::arg_type(1, c"string or table"));
+        return Err(Error::arg_type(PositiveInt::ONE, c"string or table"));
     };
 
     // Get arguments.
@@ -56,7 +58,7 @@ pub fn entry(cx: &mut Context) -> Result<(), Error> {
 
     for i in 2..=cx.args() {
         if !cx.is_nil(i) {
-            cmd.arg(cx.to_str(i));
+            cmd.arg(cx.to_str(PositiveInt::new(i).unwrap()));
         }
     }
 
@@ -75,11 +77,26 @@ pub fn entry(cx: &mut Context) -> Result<(), Error> {
     };
 
     // Spawn.
-    let prog = cmd
+    let mut prog = cmd
         .spawn()
         .map_err(|e| Error::with_source(format!("failed to spawn '{}'", opts.prog), e))?;
+    let stdout = prog.stdout.take();
+    let mut prog = cx.push_ud(Process(AssertUnwindSafe(RefCell::new(Some(prog)))));
 
-    cx.push_ud(Process(AssertUnwindSafe(RefCell::new(Some(prog)))));
+    // Set stdout.
+    if let Some(v) = stdout {
+        let v = match ChildStdout::from_std(v) {
+            Ok(v) => OutputStream(AssertUnwindSafe(RefCell::new(Box::new(v)))),
+            Err(e) => {
+                return Err(Error::with_source(
+                    "failed to convert stdout to asynchronous",
+                    e,
+                ));
+            }
+        };
+
+        Process::set_stdout(&mut prog, v);
+    }
 
     Ok(())
 }
@@ -89,31 +106,13 @@ pub struct Process(AssertUnwindSafe<RefCell<Option<Child>>>);
 
 #[class]
 impl Process {
-    #[prop]
-    fn stdout(&self, cx: &mut Context) -> Result<(), Error> {
-        // Get ChildStdout.
-        let stdout = match self.0.borrow_mut().as_mut().unwrap().stdout.take() {
-            Some(v) => v,
-            None => {
-                cx.push_nil();
-                return Ok(());
-            }
-        };
-
-        // Get Tokio version.
-        let stdout = ChildStdout::from_std(stdout)
-            .map_err(|e| Error::with_source("failed to convert stdout to asynchronous", e))?;
-        let stream = OutputStream(AssertUnwindSafe(RefCell::new(Box::new(stdout))));
-
-        cx.push_ud(stream);
-
-        Ok(())
-    }
+    const STDOUT: OutputStream = _;
 
     #[close]
-    fn kill(&self, _: &mut Context) -> Result<(), Error> {
+    fn kill(cx: &mut Context) -> Result<(), Error> {
         // Check if already killed.
-        let mut prog = match self.0.borrow_mut().take() {
+        let prog = cx.to_ud::<Self>(PositiveInt::ONE).into_ud();
+        let mut prog = match prog.0.borrow_mut().take() {
             Some(v) => v,
             None => return Ok(()),
         };
@@ -147,7 +146,7 @@ pub struct OutputStream(AssertUnwindSafe<RefCell<Box<dyn AsyncRead + Unpin>>>);
 
 #[class]
 impl OutputStream {
-    fn read(&self, cx: &mut Context) -> Result<(), Error> {
+    fn read(_: &mut Context) -> Result<(), Error> {
         todo!()
     }
 }

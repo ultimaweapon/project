@@ -1,26 +1,26 @@
 use std::borrow::Cow;
 use std::process::{Command, Stdio};
-use zl::{Context, Error, NonYieldable, Value};
+use zl::{Context, Error, NonYieldable, PositiveInt, Value};
 
 pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
     // Get options.
-    let opts = if let Some(prog) = cx.try_str(1) {
+    let opts = if let Some(prog) = cx.try_str(PositiveInt::ONE) {
         Options {
             prog: Cow::Borrowed(prog),
         }
-    } else if let Some(mut v) = cx.try_table(1) {
+    } else if let Some(mut v) = cx.try_table(PositiveInt::ONE) {
         let key = 1;
         let prog = match v.get(key) {
             Value::String(mut s) => match s.to_str() {
                 Ok(v) => Cow::Owned(v.into()),
-                Err(e) => return Err(Error::arg_table_from_std(1, key, e)),
+                Err(e) => return Err(Error::arg_table_from_std(PositiveInt::ONE, key, e)),
             },
-            v => return Err(Error::arg_table_type(1, key, "string", v)),
+            v => return Err(Error::arg_table_type(PositiveInt::ONE, key, "string", v)),
         };
 
         Options { prog }
     } else {
-        return Err(Error::arg_type(1, c"string or table"));
+        return Err(Error::arg_type(PositiveInt::ONE, c"string or table"));
     };
 
     // Get arguments.
@@ -28,7 +28,7 @@ pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
 
     for i in 2..=cx.args() {
         if !cx.is_nil(i) {
-            cmd.arg(cx.to_str(i));
+            cmd.arg(cx.to_str(PositiveInt::new(i).unwrap()));
         }
     }
 

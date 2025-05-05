@@ -6,7 +6,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{ExitCode, Termination};
 use tokio::task::LocalSet;
-use zl::{Async, AsyncThread, Frame, Lua};
+use zl::{Async, AsyncThread, ChunkType, Frame, Lua};
 
 mod api;
 mod manifest;
@@ -85,12 +85,12 @@ fn main() -> Exit {
 
 fn run_script(script: ScriptPath, defs: FxHashMap<ArgName, CommandArg>, args: ArgMatches) -> Exit {
     // Register standard libraries that does not require special handling.
-    let mut lua = match Lua::new() {
+    let mut lua = match Lua::new(None) {
         Some(v) => v,
         None => return Exit::CreateLua,
     };
 
-    lua.require_base(true);
+    lua.require_base();
     lua.require_coroutine(true);
     lua.require_io(true);
     lua.require_math(true);
@@ -129,7 +129,7 @@ fn run_script(script: ScriptPath, defs: FxHashMap<ArgName, CommandArg>, args: Ar
 
 async fn exec_script(mut td: AsyncThread, script: ScriptPath) -> Exit {
     // Load script.
-    let chunk = match td.load_file(&script) {
+    let chunk = match td.load_file(&script, ChunkType::Text) {
         Ok(Ok(v)) => v,
         Ok(Err(mut e)) => return Exit::LoadScript(e.to_c_str().to_string_lossy().into_owned()),
         Err(e) => return Exit::ReadScript(script, e),
