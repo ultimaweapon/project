@@ -215,6 +215,10 @@ Project unable to setup Tokio.
 
 Project unable to create `lua_State`.
 
+### 111 (Windows only)
+
+Project unable to set locale on MSVCRT to UTF-8.
+
 ## Project.yml
 
 ### commands

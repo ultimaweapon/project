@@ -12,6 +12,12 @@ mod api;
 mod manifest;
 
 fn main() -> Exit {
+    // Enable UTF-8 for CRT on Windows.
+    #[cfg(windows)]
+    if unsafe { libc::setlocale(libc::LC_ALL, c".UTF8".as_ptr()).is_null() } {
+        return Exit::SetLocale;
+    }
+
     // Open Project.yml.
     let path = Path::new("Project.yml");
     let manifest = match File::open(path) {
@@ -179,6 +185,8 @@ enum Exit {
     ResultOurOfRange(i64) = 108,
     SetupTokio(std::io::Error) = 109,
     CreateLua = 110,
+    #[cfg(windows)]
+    SetLocale = 111,
 }
 
 impl Termination for Exit {
@@ -209,6 +217,8 @@ impl Termination for Exit {
             }
             Self::SetupTokio(e) => eprintln!("Failed to setup Tokio: {}.", e.display()),
             Self::CreateLua => eprintln!("Failed to create lua_State."),
+            #[cfg(windows)]
+            Self::SetLocale => eprintln!("Failed to enable UTF-8 locale on CRT."),
         }
 
         code.into()
