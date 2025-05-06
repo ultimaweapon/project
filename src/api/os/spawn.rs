@@ -1,8 +1,11 @@
+use memchr::memchr;
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::ops::DerefMut;
 use std::panic::AssertUnwindSafe;
+use std::pin::Pin;
 use std::process::{Child, Command, Stdio};
-use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
+use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::ChildStdout;
 use zl::{Context, Error, Frame, FromOption, PositiveInt, Value, Yieldable, class};
 
@@ -86,7 +89,7 @@ pub fn entry(cx: &mut Context) -> Result<(), Error> {
     // Set stdout.
     if let Some(v) = stdout {
         let v = match ChildStdout::from_std(v) {
-            Ok(v) => OutputStream(AssertUnwindSafe(RefCell::new(BufReader::new(Box::new(v))))),
+            Ok(v) => OutputStream(RefCell::new((Some(Box::pin(v)), Vec::new()))),
             Err(e) => {
                 return Err(Error::with_source(
                     "failed to convert stdout to asynchronous",
@@ -142,7 +145,7 @@ impl Drop for Process {
 }
 
 /// Class of `stdout` property of the value returned from `os.spawn`.
-pub struct OutputStream(AssertUnwindSafe<RefCell<BufReader<Box<dyn AsyncRead + Unpin>>>>);
+pub struct OutputStream(RefCell<(Option<Pin<Box<dyn AsyncRead>>>, Vec<u8>)>);
 
 #[class]
 impl OutputStream {
@@ -153,19 +156,41 @@ impl OutputStream {
             .0
             .try_borrow_mut()
             .map_err(|_| Error::other(c"concurrent read is not supported"))?;
+        let stream = stream.deref_mut();
+        let rdr = match stream.0.as_mut() {
+            Some(v) => v,
+            None => return Ok(()),
+        };
 
         // Read.
-        if cx.args() == 1 {
-            let mut line = String::new();
-            let len = stream.read_line(&mut line).await?;
+        let buf = &mut stream.1;
 
-            if len != 0 {
-                if line.ends_with('\n') {
-                    line.pop();
+        if cx.args() == 1 {
+            // Fill the buffer until LF or EOF.
+            let mut end = loop {
+                if let Some(i) = memchr(b'\n', &buf) {
+                    break i;
                 }
 
-                cx.push_str(line);
+                if rdr.read_buf(buf).await? == 0 {
+                    stream.0 = None;
+
+                    if buf.is_empty() {
+                        return Ok(());
+                    }
+
+                    break buf.len();
+                }
+            };
+
+            cx.push_str(&buf[..end]);
+
+            // Remove pushed data.
+            if end < buf.len() {
+                end += 1;
             }
+
+            buf.drain(..end);
         } else {
             todo!()
         }

@@ -70,7 +70,7 @@ fn main() -> Exit {
 
         // Get command action.
         let action = if let Some(v) = def.script {
-            CommandAction::Script(v.into(), def.args)
+            CommandAction::Script(v, def.args)
         } else {
             return Exit::NoCommandAction(name);
         };
@@ -152,7 +152,7 @@ async fn exec_script(mut td: AsyncThread, script: ScriptPath) -> Exit {
     };
 
     // Get result.
-    let r = if r.len() == 0 {
+    let r = if r.is_empty() {
         return Exit::ScriptResult(0);
     } else if let Some(v) = r.to_int(1) {
         v
