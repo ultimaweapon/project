@@ -89,7 +89,10 @@ pub fn entry(cx: &mut Context) -> Result<(), Error> {
     // Set stdout.
     if let Some(v) = stdout {
         let v = match ChildStdout::from_std(v) {
-            Ok(v) => OutputStream(RefCell::new((Some(Box::pin(v)), Vec::new()))),
+            Ok(v) => OutputStream(RefCell::new(OutputState {
+                rdr: Some(Box::pin(v)),
+                buf: Vec::new(),
+            })),
             Err(e) => {
                 return Err(Error::with_source(
                     "failed to convert stdout to asynchronous",
@@ -145,35 +148,35 @@ impl Drop for Process {
 }
 
 /// Class of `stdout` property of the value returned from `os.spawn`.
-pub struct OutputStream(RefCell<(Option<Pin<Box<dyn AsyncRead>>>, Vec<u8>)>);
+pub struct OutputStream(RefCell<OutputState>);
 
 #[class]
 impl OutputStream {
     async fn read(cx: &mut Context<'_, Yieldable>) -> Result<(), Error> {
         // Lock stream.
         let stream = cx.to_ud::<Self>(PositiveInt::ONE).into_ud();
-        let mut stream = stream
+        let mut state = stream
             .0
             .try_borrow_mut()
             .map_err(|_| Error::other(c"concurrent read is not supported"))?;
-        let stream = stream.deref_mut();
-        let rdr = match stream.0.as_mut() {
+        let state = state.deref_mut();
+        let rdr = match &mut state.rdr {
             Some(v) => v,
             None => return Ok(()),
         };
 
         // Read.
-        let buf = &mut stream.1;
+        let buf = &mut state.buf;
 
         if cx.args() == 1 {
             // Fill the buffer until LF or EOF.
             let mut end = loop {
-                if let Some(i) = memchr(b'\n', &buf) {
+                if let Some(i) = memchr(b'\n', buf) {
                     break i;
                 }
 
                 if rdr.read_buf(buf).await? == 0 {
-                    stream.0 = None;
+                    state.rdr = None;
 
                     if buf.is_empty() {
                         return Ok(());
@@ -197,6 +200,11 @@ impl OutputStream {
 
         Ok(())
     }
+}
+
+struct OutputState {
+    rdr: Option<Pin<Box<dyn AsyncRead>>>,
+    buf: Vec<u8>,
 }
 
 /// First argument of `os.spawn`.

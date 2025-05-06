@@ -1,3 +1,5 @@
+#![allow(clippy::await_holding_refcell_ref)] // We are single-threaded.
+
 use self::manifest::{ArgName, ArgType, CommandArg, Project, ScriptPath};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;

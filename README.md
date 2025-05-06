@@ -159,7 +159,11 @@ Can be either `null`, `inherit` or `pipe`. If this key does not present it will 
 
 ### Url:new(url)
 
-Create an instance of `Url` class from `url`.
+Create an instance of `Url` class from `url`. This class has the following properties and methods:
+
+#### path
+
+Returns the path for the URL, as a percent-encoded ASCII string.
 
 ## Exit code
 
