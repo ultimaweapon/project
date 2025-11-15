@@ -115,16 +115,15 @@ Start building debug build!
 
 Lua implementation used here is [Tsuki](https://github.com/ultimaweapon/tsuki). There are some differences with vanilla Lua, which you can see in Tsuki's README. The following is a list of additional changes from Project:
 
-- `package` library is not available.
 - `os` library has `exit` removed.
 
 ### args[name]
 
 A global variable contains all command arguments. If argument `name` does not present it will return `false` for `bool` argument or `nil` for the other type.
 
-### os.arch()
+### os.arch
 
-Returns architecture of the OS. The value will be one of `aarch64` and `x86_64`.
+Architecture of the OS. The value will be one of `aarch64` and `x86_64`.
 
 ### os.kind()
 

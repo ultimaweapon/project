@@ -1,7 +1,6 @@
 use crate::App;
 use tsuki::{Lua, Module, Ref, Table, fp};
 
-mod arch;
 mod capture;
 mod kind;
 mod run;
@@ -24,7 +23,18 @@ impl Module<App> for OsModule {
         // functions we don't use.
         let m = lua.create_table();
 
-        m.set_str_key("arch", fp!(self::arch::entry));
+        // Set arch.
+        let arch = lua.create_str(if cfg!(target_arch = "x86_64") {
+            "x86_64"
+        } else if cfg!(target_arch = "aarch64") {
+            "aarch64"
+        } else {
+            todo!()
+        });
+
+        m.set_str_key("arch", arch);
+
+        // Set functions.
         m.set_str_key("capture", fp!(self::capture::entry));
         m.set_str_key("kind", fp!(self::kind::entry));
         m.set_str_key("run", fp!(self::run::entry));
