@@ -11,6 +11,12 @@ Project is a cross-platform CLI program to execute commands defined in the `Proj
 - Lua 5.4 as scripting language.
 - Non-blocking concurrent execution with Lua coroutine.
 
+## Why use this instead of Python?
+
+- Project are lightweight to install.
+- No additional steps to install external dependencies required by your scripts.
+- Declarative command.
+
 ## Installation
 
 If you have Rust installed you can use [cargo install](https://doc.rust-lang.org/cargo/commands/cargo-install.html) to install Project:

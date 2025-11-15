@@ -1,4 +1,5 @@
 #![allow(clippy::await_holding_refcell_ref)] // We are single-threaded.
+#![allow(clippy::new_ret_no_self)] // We need this for Lua userdata.
 
 use self::api::{ArgsModule, OsModule, UrlModule};
 use self::manifest::{ArgName, ArgType, CommandArg, Project, ScriptPath};

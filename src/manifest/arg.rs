@@ -36,12 +36,6 @@ impl AsRef<str> for ArgName {
     }
 }
 
-impl Borrow<[u8]> for ArgName {
-    fn borrow(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
 impl Borrow<str> for ArgName {
     fn borrow(&self) -> &str {
         &self.0
