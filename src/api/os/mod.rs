@@ -2,7 +2,6 @@ use crate::App;
 use tsuki::{Lua, Module, Ref, Table, fp};
 
 mod capture;
-mod kind;
 mod run;
 mod spawn;
 
@@ -34,9 +33,21 @@ impl Module<App> for OsModule {
 
         m.set_str_key("arch", arch);
 
+        // Set kind.
+        let kind = lua.create_str(if cfg!(target_os = "windows") {
+            "windows"
+        } else if cfg!(target_os = "macos") {
+            "macos"
+        } else if cfg!(target_os = "linux") {
+            "linux"
+        } else {
+            todo!()
+        });
+
+        m.set_str_key("kind", kind);
+
         // Set functions.
         m.set_str_key("capture", fp!(self::capture::entry));
-        m.set_str_key("kind", fp!(self::kind::entry));
         m.set_str_key("run", fp!(self::run::entry));
         m.set_str_key("spawn", fp!(self::spawn::entry));
 

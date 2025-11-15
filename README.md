@@ -125,9 +125,9 @@ A global variable contains all command arguments. If argument `name` does not pr
 
 Architecture of the OS. The value will be one of `aarch64` and `x86_64`.
 
-### os.kind()
+### os.kind
 
-Returns kind of the OS. The value will be one of `linux`, `macos` and `windows`.
+Kind of the OS. The value will be one of `linux`, `macos` and `windows`.
 
 ### os.run(prog [, ...])
 
