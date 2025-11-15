@@ -1,5 +1,4 @@
 use self::new::new;
-use zl::{Frame, Lua};
 
 mod new;
 

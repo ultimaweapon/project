@@ -1,25 +1,23 @@
 #![allow(clippy::await_holding_refcell_ref)] // We are single-threaded.
 
+use self::api::{ArgsModule, OsModule, UrlModule};
 use self::manifest::{ArgName, ArgType, CommandArg, Project, ScriptPath};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;
 use rustc_hash::FxHashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::process::{ExitCode, Termination};
+use std::rc::Rc;
 use tokio::task::LocalSet;
-use zl::{Async, AsyncThread, ChunkType, Frame, Lua};
+use tsuki::builtin::{BaseLib, CoroLib, IoLib, MathLib, StrLib, TableLib, Utf8Lib};
+use tsuki::{CallError, Lua, ParseError, Type, Value};
 
 mod api;
 mod manifest;
 
 fn main() -> Exit {
-    // Enable UTF-8 for CRT on Windows.
-    #[cfg(windows)]
-    if unsafe { libc::setlocale(libc::LC_ALL, c".UTF8".as_ptr()).is_null() } {
-        return Exit::SetLocale;
-    }
-
     // Open Project.yml.
     let path = Path::new("Project.yml");
     let manifest = match File::open(path) {
@@ -92,32 +90,20 @@ fn main() -> Exit {
 }
 
 fn run_script(script: ScriptPath, defs: FxHashMap<ArgName, CommandArg>, args: ArgMatches) -> Exit {
-    // Register standard libraries that does not require special handling.
-    let mut lua = match Lua::new(None) {
-        Some(v) => v,
-        None => return Exit::CreateLua,
-    };
+    // Register modules.
+    let lua = Lua::new(App {});
 
-    lua.require_base();
-    lua.require_coroutine(true);
-    lua.require_io(true);
-    lua.require_math(true);
-    lua.require_string(true);
-    lua.require_table(true);
-    lua.require_utf8(true);
-
-    // Register "os" library.
-    let mut t = lua.require_os(true);
-
-    t.set(c"exit").push_nil();
-    t.set(c"setlocale").push_nil();
-
-    self::api::os::register(t);
-
-    // Register other APIs.
-    self::api::args::register(&mut lua, defs, args);
-    self::api::buffer::register(&mut lua);
-    self::api::url::register(&mut lua);
+    lua.use_module(None, true, ArgsModule { defs, args })
+        .unwrap();
+    lua.use_module(None, true, BaseLib).unwrap();
+    lua.use_module(None, true, CoroLib).unwrap();
+    lua.use_module(None, true, IoLib).unwrap();
+    lua.use_module(None, true, MathLib).unwrap();
+    lua.use_module(None, true, OsModule).unwrap();
+    lua.use_module(None, true, StrLib).unwrap();
+    lua.use_module(None, true, TableLib).unwrap();
+    lua.use_module(None, true, UrlModule).unwrap();
+    lua.use_module(None, true, Utf8Lib).unwrap();
 
     // Setup Tokio.
     let tokio = match tokio::runtime::Builder::new_current_thread()
@@ -130,36 +116,30 @@ fn run_script(script: ScriptPath, defs: FxHashMap<ArgName, CommandArg>, args: Ar
 
     // Execute the script.
     let local = LocalSet::new();
-    let lua = lua.into_async();
 
-    local.block_on(&tokio, exec_script(lua.spawn(), script))
+    local.block_on(&tokio, exec_script(lua, script))
 }
 
-async fn exec_script(mut td: AsyncThread, script: ScriptPath) -> Exit {
-    // Load script.
-    let chunk = match td.load_file(&script, ChunkType::Text) {
-        Ok(Ok(v)) => v,
-        Ok(Err(mut e)) => return Exit::LoadScript(e.to_c_str().to_string_lossy().into_owned()),
+async fn exec_script(lua: Pin<Rc<Lua<App>>>, script: ScriptPath) -> Exit {
+    // Read script.
+    let chunk = match std::fs::read(&script) {
+        Ok(v) => v,
         Err(e) => return Exit::ReadScript(script, e),
     };
 
-    // Run the script.
-    let mut chunk = chunk.into_async();
-    let mut r = loop {
-        match chunk.resume().await {
-            Ok(Async::Yield(_)) => (),
-            Ok(Async::Finish(v)) => break v,
-            Err(mut e) => return Exit::RunScript(e.to_c_str().to_string_lossy().into_owned()),
-        }
+    // Load script.
+    let chunk = match lua.load(script.as_ref(), chunk) {
+        Ok(v) => v,
+        Err(e) => return Exit::LoadScript(script, e),
     };
 
-    // Get result.
-    let r = if r.is_empty() {
-        return Exit::ScriptResult(0);
-    } else if let Some(v) = r.to_int(1) {
-        v
-    } else {
-        return Exit::InvalidResult(r.to_type(1).into());
+    // Run the script.
+    let td = lua.create_thread();
+    let r = match td.async_call(&chunk, ()).await {
+        Ok(Value::Nil) => return Exit::ScriptResult(0),
+        Ok(Value::Int(v)) => v,
+        Ok(v) => return Exit::InvalidResult(v.ty()),
+        Err(e) => return Exit::RunScript(script, e),
     };
 
     match r {
@@ -167,6 +147,9 @@ async fn exec_script(mut td: AsyncThread, script: ScriptPath) -> Exit {
         v => Exit::ResultOurOfRange(v),
     }
 }
+
+/// Associated data of [Lua].
+struct App {}
 
 /// Action of a command.
 enum CommandAction {
@@ -177,18 +160,15 @@ enum CommandAction {
 #[repr(u8)]
 enum Exit {
     ScriptResult(u8),
-    RunScript(String) = 100,
+    RunScript(ScriptPath, Box<dyn std::error::Error>) = 100,
     OpenProject(PathBuf, std::io::Error) = 102, // 101 is Rust panic.
     LoadProject(PathBuf, serde_yaml::Error) = 103,
     NoCommandAction(String) = 104,
     ReadScript(ScriptPath, std::io::Error) = 105,
-    LoadScript(String) = 106,
-    InvalidResult(&'static str) = 107,
+    LoadScript(ScriptPath, ParseError) = 106,
+    InvalidResult(Type) = 107,
     ResultOurOfRange(i64) = 108,
     SetupTokio(std::io::Error) = 109,
-    CreateLua = 110,
-    #[cfg(windows)]
-    SetLocale = 111,
 }
 
 impl Termination for Exit {
@@ -199,7 +179,14 @@ impl Termination for Exit {
 
         match self {
             Self::ScriptResult(v) => code = v,
-            Self::RunScript(v) => eprintln!("{v}"),
+            Self::RunScript(p, e) => match e.downcast::<CallError>() {
+                Ok(e) => {
+                    let (f, l) = e.location().unwrap();
+
+                    eprintln!("{}:{}: {}.", f, l, e.display());
+                }
+                Err(e) => eprintln!("Failed to run {}: {}.", p, e.display()),
+            },
             Self::OpenProject(p, e) => {
                 eprintln!("Failed to open {}: {}.", p.display(), e.display())
             }
@@ -210,7 +197,7 @@ impl Termination for Exit {
             Self::ReadScript(p, e) => {
                 eprintln!("Failed to read {}: {}.", p, e.display())
             }
-            Self::LoadScript(v) => eprintln!("{v}"),
+            Self::LoadScript(p, e) => eprintln!("{}:{}: {}.", p, e.line(), e.display()),
             Self::InvalidResult(v) => {
                 eprintln!("expect script to return an integer, got {v}")
             }
@@ -218,9 +205,6 @@ impl Termination for Exit {
                 eprintln!("expect script to return either nil or integer between 0 - 99, got {v}")
             }
             Self::SetupTokio(e) => eprintln!("Failed to setup Tokio: {}.", e.display()),
-            Self::CreateLua => eprintln!("Failed to create lua_State."),
-            #[cfg(windows)]
-            Self::SetLocale => eprintln!("Failed to enable UTF-8 locale on CRT."),
         }
 
         code.into()

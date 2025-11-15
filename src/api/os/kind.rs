@@ -1,6 +1,7 @@
-use zl::{Context, Error, Frame, NonYieldable};
+use crate::App;
+use tsuki::context::{Args, Context, Ret};
 
-pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
+pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
     let v = if cfg!(target_os = "windows") {
         "windows"
     } else if cfg!(target_os = "macos") {
@@ -11,6 +12,7 @@ pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
         todo!()
     };
 
-    cx.push_str(v);
-    Ok(())
+    cx.push_str(v)?;
+
+    Ok(cx.into())
 }

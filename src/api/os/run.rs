@@ -1,35 +1,32 @@
-use std::borrow::Cow;
+use crate::App;
 use std::process::{Command, Stdio};
-use zl::{Context, Error, NonYieldable, PositiveInt, Value};
+use tsuki::context::{Args, Context, Ret};
 
-pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
+pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
     // Get options.
-    let opts = if let Some(prog) = cx.try_str(PositiveInt::ONE) {
-        Options {
-            prog: Cow::Borrowed(prog),
-        }
-    } else if let Some(mut v) = cx.try_table(PositiveInt::ONE) {
-        let key = 1;
-        let prog = match v.get(key) {
-            Value::String(mut s) => match s.to_str() {
-                Ok(v) => Cow::Owned(v.into()),
-                Err(e) => return Err(Error::arg_table_from_std(PositiveInt::ONE, key, e)),
-            },
-            v => return Err(Error::arg_table_type(PositiveInt::ONE, key, "string", v)),
-        };
-
-        Options { prog }
-    } else {
-        return Err(Error::arg_type(PositiveInt::ONE, c"string or table"));
-    };
+    let prog = cx.arg(1);
+    let prog = prog
+        .get_str()?
+        .as_str()
+        .ok_or_else(|| prog.error("expect UTF-8 string"))?;
 
     // Get arguments.
-    let mut cmd = Command::new(opts.prog.as_ref());
+    let mut cmd = Command::new(prog);
 
     for i in 2..=cx.args() {
-        if !cx.is_nil(i) {
-            cmd.arg(cx.to_str(PositiveInt::new(i).unwrap()));
-        }
+        // Get argument.
+        let arg = cx.arg(i);
+        let val = match arg.to_nilable_str(true)? {
+            Some(v) => v,
+            None => continue,
+        };
+
+        // Check if UTF-8.
+        let val = val
+            .as_str()
+            .ok_or_else(|| arg.error("expect UTF-8 string"))?;
+
+        cmd.arg(val);
     }
 
     cmd.stdin(Stdio::null());
@@ -37,18 +34,11 @@ pub fn entry(cx: &mut Context<NonYieldable>) -> Result<(), Error> {
     // Run.
     let status = cmd
         .status()
-        .map_err(|e| Error::with_source(format!("failed to run '{}'", opts.prog), e))?;
+        .map_err(|e| erdp::wrap(format!("failed to run '{prog}'"), e))?;
 
     if !status.success() {
-        return Err(Error::other(format!(
-            "'{}' exited with an error ({})",
-            opts.prog, status
-        )));
+        return Err(format!("'{prog}' exited with an error ({status})").into());
     }
 
-    Ok(())
-}
-
-struct Options<'a> {
-    prog: Cow<'a, str>,
+    Ok(cx.into())
 }

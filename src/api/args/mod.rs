@@ -1,60 +1,71 @@
+use crate::App;
 use crate::manifest::{ArgName, ArgType, CommandArg};
 use clap::ArgMatches;
 use rustc_hash::FxHashMap;
-use std::any::type_name;
-use std::ffi::{CStr, CString};
-use std::panic::AssertUnwindSafe;
-use std::sync::LazyLock;
-use zl::{Context, Error, Frame, Lua, PositiveInt, Table, UserType};
+use tsuki::context::{Context, Ret};
+use tsuki::{Lua, Module, Nil, Ref, UserData, fp};
 
-pub fn register(lua: &mut Lua, defs: FxHashMap<ArgName, CommandArg>, args: ArgMatches) {
-    lua.register_ud::<Args>();
+/// Implementation of [Module] for global variabla `args`.
+pub struct ArgsModule {
+    pub defs: FxHashMap<ArgName, CommandArg>,
+    pub args: ArgMatches,
+}
 
-    lua.set_global(c"args").push_ud(Args {
-        defs,
-        vals: AssertUnwindSafe(args),
-    });
+impl Module<App> for ArgsModule {
+    const NAME: &str = "args";
+
+    type Inst<'a>
+        = Ref<'a, UserData<App, Args>>
+    where
+        App: 'a;
+
+    fn open(self, lua: &Lua<App>) -> Result<Self::Inst<'_>, Box<dyn core::error::Error>> {
+        // Setup metatable.
+        let mt = lua.create_table();
+
+        mt.set_str_key("__index", fp!(Args::get));
+
+        lua.register_metatable::<Args>(&mt);
+
+        Ok(lua.create_ud(Args {
+            defs: self.defs,
+            vals: self.args,
+        }))
+    }
 }
 
 /// Class of the global variable `args`.
-struct Args {
+pub struct Args {
     defs: FxHashMap<ArgName, CommandArg>,
-    vals: AssertUnwindSafe<ArgMatches>,
+    vals: ArgMatches,
 }
 
 impl Args {
-    fn get(&self, cx: &mut Context) -> Result<(), Error> {
-        let name = cx.to_str(PositiveInt::TWO);
-        let def = match self.defs.get(name) {
+    fn get(
+        cx: Context<App, tsuki::context::Args>,
+    ) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
+        let args = cx.arg(1).get_ud::<Self>()?.value();
+        let name = cx
+            .arg(2)
+            .get_str()?
+            .as_str()
+            .ok_or_else(|| "expect UTF-8 string")?;
+        let def = match args.defs.get(name) {
             Some(v) => v,
             None => {
-                cx.push_nil();
-                return Ok(());
+                cx.push(Nil)?;
+                return Ok(cx.into());
             }
         };
 
         match def.ty {
-            ArgType::Bool => drop(cx.push_bool(self.vals.get_flag(name))),
-            ArgType::String => match self.vals.get_one::<String>(name) {
-                Some(v) => drop(cx.push_str(v)),
-                None => drop(cx.push_nil()),
+            ArgType::Bool => cx.push(args.vals.get_flag(name))?,
+            ArgType::String => match args.vals.get_one::<String>(name) {
+                Some(v) => cx.push_str(v.as_str())?,
+                None => cx.push(Nil)?,
             },
         }
 
-        Ok(())
-    }
-}
-
-impl UserType for Args {
-    fn name() -> &'static CStr {
-        static NAME: LazyLock<CString> =
-            LazyLock::new(|| CString::new(type_name::<Args>()).unwrap());
-
-        NAME.as_c_str()
-    }
-
-    fn setup<P: Frame>(meta: &mut Table<P>) {
-        meta.set(c"__index")
-            .push_fn(|cx| cx.to_ud::<Self>(PositiveInt::ONE).into_ud().get(cx));
+        Ok(cx.into())
     }
 }

@@ -1,30 +1,46 @@
-use zl::{Context, Error, Frame, Lua, PositiveInt, class};
+use crate::App;
+use tsuki::context::{Args, Context, Ret};
+use tsuki::{Lua, Module, Ref, Table, fp};
 
-pub fn register(lua: &mut Lua) {
-    lua.register_ud::<Url>();
+/// Implementation of [Module] for `Url` class.
+pub struct UrlModule;
+
+impl Module<App> for UrlModule {
+    const NAME: &str = "Url";
+
+    type Inst<'a>
+        = Ref<'a, Table<App>>
+    where
+        App: 'a;
+
+    fn open(self, lua: &Lua<App>) -> Result<Self::Inst<'_>, Box<dyn core::error::Error>> {
+        let g = lua.create_table();
+
+        g.set_str_key("new", fp!(Url::new));
+
+        Ok(g)
+    }
 }
 
 /// Implementation of `Url` class.
-struct Url(url::Url);
+struct Url;
 
-#[class(global)]
 impl Url {
-    #[class]
-    fn new(cx: &mut Context) -> Result<(), Error> {
-        let url = cx.to_str(PositiveInt::TWO);
-        let url = url::Url::parse(url).map_err(|e| Error::arg_from_std(PositiveInt::TWO, e))?;
+    fn new(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
+        // Parse URL.
+        let url = cx.arg(2);
+        let url = match url.to_str()?.as_str() {
+            Some(v) => url::Url::parse(v).map_err(|e| url.error(e))?,
+            None => return Err("expect UTF-8 string".into()),
+        };
 
-        cx.push_ud(Self(url));
+        // Create userdata.
+        let ud = cx.create_ud(Self);
 
-        Ok(())
-    }
+        ud.set("path", cx.create_str(url.path()));
 
-    #[prop]
-    fn path(cx: &mut Context) -> Result<(), Error> {
-        let url = cx.to_ud::<Self>(PositiveInt::ONE).into_ud();
+        cx.push(ud)?;
 
-        cx.push_str(url.0.path());
-
-        Ok(())
+        Ok(cx.into())
     }
 }

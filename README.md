@@ -107,7 +107,10 @@ Start building debug build!
 
 ## Script API
 
-Lua [standard libraries](https://www.lua.org/manual/5.4/manual.html#6) are available except `debug` and `package`. The `os` library also has `exit` and `setlocale` removed. Note that Lua version is 5.4 **without** compatibility with the previous version. You can see the list of the differences [here](https://www.lua.org/manual/5.4/manual.html#8).
+Lua implementation used here is [Tsuki](https://github.com/ultimaweapon/tsuki). There are some differences with vanilla Lua, which you can see in Tsuki's README. The following is a list of additional changes from Project:
+
+- `package` library is not available.
+- `os` library has `exit` removed.
 
 ### args[name]
 
@@ -131,7 +134,7 @@ All `nil` in the arguments will be removed (e.g. `os.run('echo', 'abc', nil, 'de
 
 Run `prog` with the remaining arguments as its arguments and return its outputs, which is stdout by default. This does not use OS shell to run `prog`. The returned string will have LF and/or CR at the end removed by default. This function will raise an error by default if `prog` exit with non-zero code. By default, stdin will be a null stream and a non-captured stream will be inherits from Project process. Working directory will be the directory that contains `Project.yml` by default.
 
-All `nil` in the arguments will be removed (e.g. `os.capture('echo', 'abc', nil, 'def')` will invoke `echo` with only 2 arguments).
+All `nil` in the arguments will be removed (e.g. `os.capture('echo', 'abc', nil, 'def')` will invoke `echo` with `abc` and `def` as arguments).
 
 If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following additional items:
 
@@ -214,14 +217,6 @@ Return value from Lua script is integer outside 0 - 99.
 ### 109
 
 Project unable to setup Tokio.
-
-### 110
-
-Project unable to create `lua_State`.
-
-### 111 (Windows only)
-
-Project unable to set locale on MSVCRT to UTF-8.
 
 ## Project.yml
 

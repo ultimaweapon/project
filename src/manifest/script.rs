@@ -32,6 +32,12 @@ impl<'a> Deserialize<'a> for ScriptPath {
     }
 }
 
+impl AsRef<str> for ScriptPath {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 impl AsRef<Path> for ScriptPath {
     fn as_ref(&self) -> &Path {
         Path::new(&self.0)

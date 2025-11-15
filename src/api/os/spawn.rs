@@ -1,68 +1,95 @@
+use crate::App;
 use memchr::memchr;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::ops::DerefMut;
-use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
 use std::process::{Child, Command, Stdio};
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::ChildStdout;
-use zl::{Context, Error, Frame, FromOption, PositiveInt, Value, Yieldable, class};
+use tsuki::context::{Args, Context, Ret};
+use tsuki::{FromStr, Value, class};
 
 /// Implementation of `os.spawn`.
-pub fn entry(cx: &mut Context) -> Result<(), Error> {
+pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
     // Get options.
-    let opts = if let Some(prog) = cx.try_str(PositiveInt::ONE) {
+    let arg = cx.arg(1);
+    let opts = if let Some(prog) = arg.as_str(true) {
+        let prog = prog
+            .as_str()
+            .ok_or_else(|| arg.error("expect UTF-8 string"))?
+            .into();
+
         Options {
-            prog: Cow::Borrowed(prog),
+            prog,
             cwd: None,
             stdout: Stream::Inherit,
         }
-    } else if let Some(mut t) = cx.try_table(PositiveInt::ONE) {
+    } else if let Some(t) = arg.as_table() {
         // Program.
-        let key = 1;
-        let prog = match t.get(key) {
-            Value::String(mut s) => s
-                .to_str()
-                .map_err(|e| Error::arg_table_from_std(PositiveInt::ONE, key, e))
-                .map(|v| Cow::Owned(v.into()))?,
-            v => return Err(Error::arg_table_type(PositiveInt::ONE, key, "string", v)),
+        let prog = match t.get(1) {
+            Value::Str(v) => v
+                .as_str()
+                .ok_or_else(|| arg.error("expect UTF-8 string at index 1"))?
+                .to_owned()
+                .into(),
+            v => {
+                return Err(arg.error(format!("expect string at index 1, got {}", cx.type_name(v))));
+            }
         };
 
         // CWD.
-        let key = c"cwd";
-        let cwd = match t.get(key) {
-            Value::Nil(_) => None,
-            Value::String(mut v) => v
-                .to_str()
-                .map_err(|e| Error::arg_table_from_std(PositiveInt::ONE, key, e))?
+        let cwd = match t.get_str_key("cwd") {
+            Value::Nil => None,
+            Value::Str(v) => v
+                .as_str()
+                .ok_or_else(|| arg.error("expect UTF-8 string on 'cwd'"))?
                 .to_owned()
                 .into(),
-            v => return Err(Error::arg_table_type(PositiveInt::ONE, key, "string", v)),
+            v => return Err(arg.error(format!("expect string on 'cwd', got {}", cx.type_name(v)))),
         };
 
         // STDOUT.
-        let key = c"stdout";
-        let stdout = match t.get(key) {
-            Value::Nil(_) => Stream::Inherit,
-            Value::String(mut v) => v
-                .to_option()
-                .map_err(|e| Error::arg_table(PositiveInt::ONE, key, e))?,
-            v => return Err(Error::arg_table_type(PositiveInt::ONE, key, "string", v)),
+        let stdout = match t.get_str_key("stdout") {
+            Value::Nil => Stream::Inherit,
+            Value::Str(v) => {
+                let v = v
+                    .as_str()
+                    .ok_or_else(|| arg.error("expect UTF-8 string on 'stdout'"))?;
+
+                v.parse()
+                    .map_err(|_| arg.error(format!("unknown option '{v}' on 'stdout'")))?
+            }
+            v => {
+                return Err(arg.error(format!(
+                    "expect string on 'stdout', got {}",
+                    cx.type_name(v)
+                )));
+            }
         };
 
         Options { prog, cwd, stdout }
     } else {
-        return Err(Error::arg_type(PositiveInt::ONE, c"string or table"));
+        return Err(arg.invalid_type("string or table"));
     };
 
     // Get arguments.
     let mut cmd = Command::new(opts.prog.as_ref());
 
     for i in 2..=cx.args() {
-        if !cx.is_nil(i) {
-            cmd.arg(cx.to_str(PositiveInt::new(i).unwrap()));
-        }
+        // Get argument.
+        let arg = cx.arg(i);
+        let val = match arg.to_nilable_str(true)? {
+            Some(v) => v,
+            None => continue,
+        };
+
+        // Check if UTF-8.
+        let val = val
+            .as_str()
+            .ok_or_else(|| arg.error("expect UTF-8 string"))?;
+
+        cmd.arg(val);
     }
 
     if let Some(v) = opts.cwd {
@@ -82,43 +109,35 @@ pub fn entry(cx: &mut Context) -> Result<(), Error> {
     // Spawn.
     let mut prog = cmd
         .spawn()
-        .map_err(|e| Error::with_source(format!("failed to spawn '{}'", opts.prog), e))?;
+        .map_err(|e| erdp::wrap(format!("failed to spawn '{}'", opts.prog), e))?;
     let stdout = prog.stdout.take();
-    let mut prog = cx.push_ud(Process(AssertUnwindSafe(RefCell::new(Some(prog)))));
+    let prog = cx.create_ud(Process(RefCell::new(Some(prog))));
 
     // Set stdout.
     if let Some(v) = stdout {
         let v = match ChildStdout::from_std(v) {
-            Ok(v) => OutputStream(RefCell::new(OutputState {
+            Ok(v) => cx.create_ud(OutputStream(RefCell::new(OutputState {
                 rdr: Some(Box::pin(v)),
                 buf: Vec::new(),
-            })),
-            Err(e) => {
-                return Err(Error::with_source(
-                    "failed to convert stdout to asynchronous",
-                    e,
-                ));
-            }
+            }))),
+            Err(e) => return Err(erdp::wrap("failed to convert stdout to asynchronous", e).into()),
         };
 
-        Process::set_stdout(&mut prog, v);
+        prog.set("stdout", v);
     }
 
-    Ok(())
+    Ok(cx.into())
 }
 
 /// Class of the value that returned from `os.spawn`.
-pub struct Process(AssertUnwindSafe<RefCell<Option<Child>>>);
+pub struct Process(RefCell<Option<Child>>);
 
-#[class]
+#[class(associated_data = App)]
 impl Process {
-    const STDOUT: OutputStream = _;
-
-    #[close]
-    fn kill(cx: &mut Context) -> Result<(), Error> {
+    #[close(hidden)]
+    fn kill(&self, _: &Context<App, Args>) -> Result<(), Box<dyn std::error::Error>> {
         // Check if already killed.
-        let prog = cx.to_ud::<Self>(PositiveInt::ONE).into_ud();
-        let mut prog = match prog.0.borrow_mut().take() {
+        let mut prog = match self.0.borrow_mut().take() {
             Some(v) => v,
             None => return Ok(()),
         };
@@ -127,9 +146,9 @@ impl Process {
         let id = prog.id();
 
         prog.kill()
-            .map_err(|e| Error::with_source(format!("failed to kill {id}"), e))?;
+            .map_err(|e| erdp::wrap(format!("failed to kill {id}"), e))?;
         prog.wait()
-            .map_err(|e| Error::with_source(format!("failed to wait {id}"), e))?;
+            .map_err(|e| erdp::wrap(format!("failed to wait {id}"), e))?;
 
         Ok(())
     }
@@ -150,23 +169,22 @@ impl Drop for Process {
 /// Class of `stdout` property of the value returned from `os.spawn`.
 pub struct OutputStream(RefCell<OutputState>);
 
-#[class]
+#[class(associated_data = App)]
 impl OutputStream {
-    async fn read(cx: &mut Context<'_, Yieldable>) -> Result<(), Error> {
+    async fn read(&self, cx: &Context<'_, App, Args>) -> Result<(), Box<dyn std::error::Error>> {
         // Lock stream.
-        let stream = cx.to_ud::<Self>(PositiveInt::ONE).into_ud();
-        let mut state = stream
+        let mut st = self
             .0
             .try_borrow_mut()
-            .map_err(|_| Error::other(c"concurrent read is not supported"))?;
-        let state = state.deref_mut();
-        let rdr = match &mut state.rdr {
+            .map_err(|_| "concurrent read is not supported")?;
+        let st = st.deref_mut();
+        let rdr = match &mut st.rdr {
             Some(v) => v,
             None => return Ok(()),
         };
 
         // Read.
-        let buf = &mut state.buf;
+        let buf = &mut st.buf;
 
         if cx.args() == 1 {
             // Fill the buffer until LF or EOF.
@@ -176,7 +194,7 @@ impl OutputStream {
                 }
 
                 if rdr.read_buf(buf).await? == 0 {
-                    state.rdr = None;
+                    st.rdr = None;
 
                     if buf.is_empty() {
                         return Ok(());
@@ -186,7 +204,7 @@ impl OutputStream {
                 }
             };
 
-            cx.push_str(&buf[..end]);
+            cx.push_bytes(&buf[..end])?;
 
             // Remove pushed data.
             if end < buf.len() {
@@ -195,7 +213,7 @@ impl OutputStream {
 
             buf.drain(..end);
         } else {
-            todo!()
+            return Err("non-default format currently not supported".into());
         }
 
         Ok(())
@@ -215,7 +233,7 @@ struct Options<'a> {
 }
 
 /// Option of standard stream for `os.spawn`.
-#[derive(FromOption)]
+#[derive(FromStr)]
 enum Stream {
     Null,
     Inherit,
