@@ -126,6 +126,8 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
         prog.set("stdout", v);
     }
 
+    cx.push(prog)?;
+
     Ok(cx.into())
 }
 
