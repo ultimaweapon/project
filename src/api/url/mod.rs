@@ -29,7 +29,7 @@ impl Url {
     fn new(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
         // Parse URL.
         let url = cx.arg(2);
-        let url = match url.to_str()?.as_str() {
+        let url = match url.to_str()?.as_utf8() {
             Some(v) => url::Url::parse(v).map_err(|e| url.error(e))?,
             None => return Err("expect UTF-8 string".into()),
         };

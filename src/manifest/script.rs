@@ -6,6 +6,12 @@ use std::path::Path;
 /// Path of command script.
 pub struct ScriptPath(String);
 
+impl ScriptPath {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 impl<'a> Deserialize<'a> for ScriptPath {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

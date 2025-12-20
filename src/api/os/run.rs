@@ -7,7 +7,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
     let prog = cx.arg(1);
     let prog = prog
         .get_str()?
-        .as_str()
+        .as_utf8()
         .ok_or_else(|| prog.error("expect UTF-8 string"))?;
 
     // Get arguments.
@@ -23,7 +23,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
 
         // Check if UTF-8.
         let val = val
-            .as_str()
+            .as_utf8()
             .ok_or_else(|| arg.error("expect UTF-8 string"))?;
 
         cmd.arg(val);

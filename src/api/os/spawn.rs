@@ -16,7 +16,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
     let arg = cx.arg(1);
     let opts = if let Some(prog) = arg.as_str(true) {
         let prog = prog
-            .as_str()
+            .as_utf8()
             .ok_or_else(|| arg.error("expect UTF-8 string"))?
             .into();
 
@@ -29,7 +29,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
         // Program.
         let prog = match t.get(1) {
             Value::Str(v) => v
-                .as_str()
+                .as_utf8()
                 .ok_or_else(|| arg.error("expect UTF-8 string at index 1"))?
                 .to_owned()
                 .into(),
@@ -42,7 +42,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
         let cwd = match t.get_str_key("cwd") {
             Value::Nil => None,
             Value::Str(v) => v
-                .as_str()
+                .as_utf8()
                 .ok_or_else(|| arg.error("expect UTF-8 string on 'cwd'"))?
                 .to_owned()
                 .into(),
@@ -54,7 +54,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
             Value::Nil => Stream::Inherit,
             Value::Str(v) => {
                 let v = v
-                    .as_str()
+                    .as_utf8()
                     .ok_or_else(|| arg.error("expect UTF-8 string on 'stdout'"))?;
 
                 v.parse()
@@ -86,7 +86,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
 
         // Check if UTF-8.
         let val = val
-            .as_str()
+            .as_utf8()
             .ok_or_else(|| arg.error("expect UTF-8 string"))?;
 
         cmd.arg(val);

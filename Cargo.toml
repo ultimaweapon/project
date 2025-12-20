@@ -14,5 +14,5 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_yaml = "0.9.34"
 thiserror = "2.0.12"
 tokio = { version = "1.44.1", features = ["io-util", "process", "rt", "time"] }
-tsuki = "0.3.3"
+tsuki = "0.4.0"
 url = "2.5.4"

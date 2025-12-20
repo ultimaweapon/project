@@ -129,7 +129,7 @@ async fn exec_script(lua: Pin<Rc<Lua<App>>>, script: ScriptPath) -> Exit {
     };
 
     // Load script.
-    let chunk = match lua.load(script.as_ref(), chunk) {
+    let chunk = match lua.load(script.as_str(), chunk) {
         Ok(v) => v,
         Err(e) => return Exit::LoadScript(script, e),
     };

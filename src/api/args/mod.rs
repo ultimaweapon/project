@@ -45,7 +45,11 @@ impl Args {
         cx: Context<App, tsuki::context::Args>,
     ) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
         let args = cx.arg(1).get_ud::<Self>()?.value();
-        let name = cx.arg(2).get_str()?.as_str().ok_or("expect UTF-8 string")?;
+        let name = cx
+            .arg(2)
+            .get_str()?
+            .as_utf8()
+            .ok_or("expect UTF-8 string")?;
         let def = match args.defs.get(name) {
             Some(v) => v,
             None => {

@@ -10,7 +10,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
     let opts = if let Some(s) = prog.as_str(true) {
         Options {
             prog: s
-                .as_str()
+                .as_utf8()
                 .ok_or_else(|| prog.error("expect UTF-8 string"))?
                 .into(),
             from: From::default(),
@@ -20,7 +20,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
         let from = match t.get_str_key("from") {
             Value::Nil => From::default(),
             Value::Str(s) => s
-                .as_str()
+                .as_utf8()
                 .ok_or_else(|| prog.error("expect UTF-8 string on 'from'"))?
                 .parse()
                 .map_err(|e| prog.error(e))?,
@@ -34,7 +34,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
         // Program.
         let prog = match t.get(1) {
             Value::Str(s) => s
-                .as_str()
+                .as_utf8()
                 .ok_or_else(|| prog.error("expect UTF-8 string at index 1"))?
                 .to_owned()
                 .into(),
@@ -63,7 +63,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
 
         // Check if UTF-8.
         let val = val
-            .as_str()
+            .as_utf8()
             .ok_or_else(|| arg.error("expect UTF-8 string"))?;
 
         cmd.arg(val);
