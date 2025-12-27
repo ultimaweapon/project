@@ -1,7 +1,7 @@
 #![allow(clippy::await_holding_refcell_ref)] // We are single-threaded.
 #![allow(clippy::new_ret_no_self)] // We need this for Lua userdata.
 
-use self::api::{ArgsModule, JsonModule, OsModule, UrlModule};
+use self::api::{ArgsModule, GlobalModule, JsonModule, OsModule, UrlModule};
 use self::manifest::{ArgName, ArgType, CommandArg, Project, ScriptPath};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;
@@ -12,7 +12,7 @@ use std::pin::Pin;
 use std::process::{ExitCode, Termination};
 use std::rc::Rc;
 use tokio::task::LocalSet;
-use tsuki::builtin::{BaseLib, CoroLib, IoLib, MathLib, StrLib, TableLib, Utf8Lib};
+use tsuki::builtin::{CoroLib, IoLib, MathLib, StrLib, TableLib, Utf8Lib};
 use tsuki::{CallError, Lua, ParseError, Type, Value};
 
 mod api;
@@ -96,7 +96,7 @@ fn run_script(script: ScriptPath, defs: FxHashMap<ArgName, CommandArg>, args: Ar
 
     lua.use_module(None, true, ArgsModule { defs, args })
         .unwrap();
-    lua.use_module(None, true, BaseLib).unwrap();
+    lua.use_module(None, true, GlobalModule).unwrap();
     lua.use_module(None, true, CoroLib).unwrap();
     lua.use_module(None, true, IoLib).unwrap();
     lua.use_module(None, true, JsonModule).unwrap();

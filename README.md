@@ -118,6 +118,7 @@ Start building debug build!
 
 Lua implementation used here is [Tsuki](https://github.com/ultimaweapon/tsuki). There are some differences with vanilla Lua, which you can see in Tsuki's README. The following is a list of additional changes from Project:
 
+- `pcall` has been removed.
 - `os` library has `exit` removed.
 
 ### args[name]
