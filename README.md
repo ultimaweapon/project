@@ -2,6 +2,9 @@
 
 Project is a cross-platform CLI program to execute commands defined in the `Project.yml`. Each command is a Lua script. The main different from [just](https://github.com/casey/just) is Project focus on cross-platform scripting instead of rely on the other tools.
 
+> [!WARNING]
+> There is a plan to upgrade to Lua 5.5 so don't write your script in such a way that it is not compatible with it.
+
 ## Key features
 
 - Batteries included.
@@ -120,6 +123,10 @@ Lua implementation used here is [Tsuki](https://github.com/ultimaweapon/tsuki). 
 ### args[name]
 
 A global variable contains all command arguments. If argument `name` does not present it will return `false` for `bool` argument or `nil` for the other type.
+
+### json.parse(json)
+
+Parse a JSON string and return a corresponding value (e.g. the result will be a table for JSON object).
 
 ### os.arch
 

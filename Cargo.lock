@@ -360,6 +360,7 @@ dependencies = [
  "memchr",
  "rustc-hash",
  "serde",
+ "serde_json",
  "serde_yaml",
  "thiserror",
  "tokio",
@@ -451,6 +452,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.147"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6af14725505314343e673e9ecb7cd7e8a36aa9791eb936235a3567cc31447ae4"
+dependencies = [
+ "itoa",
+ "memchr",
+ "serde",
+ "serde_core",
+ "zmij",
 ]
 
 [[package]]
@@ -561,15 +575,16 @@ dependencies = [
 
 [[package]]
 name = "tsuki"
-version = "0.4.0"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f683b0c0180cef99225203d6db91325faeb5125d6def9d8d4b882b8a6d61527f"
+checksum = "43d623746159fc98c0cbc3cb807d835c5f012a0ef0aa9c3e53f55ac4a16e5bcf"
 dependencies = [
  "erdp",
  "libc",
  "libm",
  "memchr",
  "rand",
+ "serde",
  "thiserror",
  "tsuki-macros",
 ]
@@ -833,3 +848,9 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "zmij"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4af59da1029247450b54ba43e0b62c8e376582464bbe5504dd525fe521e7e8fd"
