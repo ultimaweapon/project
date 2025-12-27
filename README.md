@@ -125,6 +125,10 @@ Lua implementation used here is [Tsuki](https://github.com/ultimaweapon/tsuki). 
 
 A global variable contains all command arguments. If argument `name` does not present it will return `false` for `bool` argument or `nil` for the other type.
 
+### exit(code)
+
+Cause Project process to exit immediately. Unlike `os.exit`, this function always close all to-be-closed variables.
+
 ### json.parse(json)
 
 Parse a JSON string and return a corresponding value (e.g. the result will be a table for JSON object).
@@ -183,13 +187,7 @@ Returns the path for the URL, as a percent-encoded ASCII string.
 
 ## Exit code
 
-Project will exit with exit code 0 when all operations completed successfully. The script can also return a custom exit code:
-
-```lua
-return 5
-```
-
-Will cause Project to exit with exit code 5. The code 100 and above are reserved for Project use and have the following meaning:
+Project will exit with exit code 0 when all operations completed successfully. The script can use `exit` to exit with a custom exit code. The code 100 and above are reserved for Project use and have the following meaning:
 
 ### 100
 
@@ -218,14 +216,6 @@ Project unable to read Lua script for the command.
 ### 106
 
 Project unable to load Lua script for the command.
-
-### 107
-
-Return value from Lua script is not either nil or integer.
-
-### 108
-
-Return value from Lua script is integer outside 0 - 99.
 
 ### 109
 

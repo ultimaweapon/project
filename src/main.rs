@@ -13,7 +13,7 @@ use std::process::{ExitCode, Termination};
 use std::rc::Rc;
 use tokio::task::LocalSet;
 use tsuki::builtin::{CoroLib, IoLib, MathLib, StrLib, TableLib, Utf8Lib};
-use tsuki::{CallError, Lua, ParseError, Type, Value};
+use tsuki::{CallError, Lua, ParseError};
 
 mod api;
 mod manifest;
@@ -137,16 +137,10 @@ async fn exec_script(lua: Pin<Rc<Lua<App>>>, script: ScriptPath) -> Exit {
 
     // Run the script.
     let td = lua.create_thread();
-    let r = match td.async_call(&chunk, ()).await {
-        Ok(Value::Nil) => return Exit::ScriptResult(0),
-        Ok(Value::Int(v)) => v,
-        Ok(v) => return Exit::InvalidResult(v.ty()),
-        Err(e) => return Exit::RunScript(script, e),
-    };
 
-    match r {
-        0..=99 => r.try_into().map(Exit::ScriptResult).unwrap(),
-        v => Exit::ResultOurOfRange(v),
+    match td.async_call(&chunk, ()).await {
+        Ok(()) => Exit::ScriptResult(0),
+        Err(e) => Exit::RunScript(script, e),
     }
 }
 
@@ -168,13 +162,13 @@ enum Exit {
     NoCommandAction(String) = 104,
     ReadScript(ScriptPath, std::io::Error) = 105,
     LoadScript(ScriptPath, ParseError) = 106,
-    InvalidResult(Type) = 107,
-    ResultOurOfRange(i64) = 108,
     SetupTokio(std::io::Error) = 109,
 }
 
 impl Termination for Exit {
     fn report(self) -> ExitCode {
+        use std::error::Error;
+
         // SAFETY: This is safe since Exit marked with `repr(u8)`. See
         // https://doc.rust-lang.org/std/mem/fn.discriminant.html for more details.
         let mut code = unsafe { (&self as *const Self as *const u8).read() };
@@ -182,11 +176,14 @@ impl Termination for Exit {
         match self {
             Self::ScriptResult(v) => code = v,
             Self::RunScript(p, e) => match e.downcast::<CallError>() {
-                Ok(e) => {
-                    let (f, l) = e.location().unwrap();
+                Ok(e) => match e.source().and_then(|e| e.downcast_ref::<self::api::Exit>()) {
+                    Some(e) => code = e.code(),
+                    None => {
+                        let (f, l) = e.location().unwrap();
 
-                    eprintln!("{}:{}: {}.", f, l, e.display());
-                }
+                        eprintln!("{}:{}: {}.", f, l, e.display());
+                    }
+                },
                 Err(e) => eprintln!("Failed to run {}: {}.", p, e.display()),
             },
             Self::OpenProject(p, e) => {
@@ -200,12 +197,6 @@ impl Termination for Exit {
                 eprintln!("Failed to read {}: {}.", p, e.display())
             }
             Self::LoadScript(p, e) => eprintln!("{}:{}: {}.", p, e.line(), e.display()),
-            Self::InvalidResult(v) => {
-                eprintln!("expect script to return an integer, got {v}")
-            }
-            Self::ResultOurOfRange(v) => {
-                eprintln!("expect script to return either nil or integer between 0 - 99, got {v}")
-            }
             Self::SetupTokio(e) => eprintln!("Failed to setup Tokio: {}.", e.display()),
         }
 

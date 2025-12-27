@@ -3,6 +3,9 @@ pub use self::json::JsonModule;
 pub use self::os::OsModule;
 pub use self::url::UrlModule;
 
+use crate::App;
+use std::fmt::{Display, Formatter};
+use tsuki::context::{Args, Context, Ret};
 use tsuki::{Lua, Module, Table, fp};
 
 mod args;
@@ -13,19 +16,31 @@ mod url;
 /// Implementation of [Module] for global APIs.
 pub struct GlobalModule;
 
-impl<A> Module<A> for GlobalModule {
+impl GlobalModule {
+    fn exit(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
+        let code = cx.arg(1);
+        let code = code
+            .to_int()?
+            .try_into()
+            .ok()
+            .filter(|c: &u8| matches!(c, 0..=99))
+            .ok_or_else(|| code.error("value out of range"))?;
+
+        Err(Box::new(Exit(code)))
+    }
+}
+
+impl Module<App> for GlobalModule {
     const NAME: &str = "_G";
 
-    type Inst<'a>
-        = &'a Table<A>
-    where
-        A: 'a;
+    type Inst<'a> = &'a Table<App>;
 
-    fn open(self, lua: &Lua<A>) -> Result<Self::Inst<'_>, Box<dyn core::error::Error>> {
+    fn open(self, lua: &Lua<App>) -> Result<Self::Inst<'_>, Box<dyn core::error::Error>> {
         let m = lua.global();
 
         m.set_str_key("assert", fp!(tsuki::builtin::base::assert));
         m.set_str_key("error", fp!(tsuki::builtin::base::error));
+        m.set_str_key("exit", fp!(Self::exit));
         m.set_str_key("getmetatable", fp!(tsuki::builtin::base::getmetatable));
         m.set_str_key("load", fp!(tsuki::builtin::base::load));
         m.set_str_key("next", fp!(tsuki::builtin::base::next));
@@ -42,5 +57,23 @@ impl<A> Module<A> for GlobalModule {
         m.set_str_key("type", fp!(tsuki::builtin::base::r#type));
 
         Ok(m)
+    }
+}
+
+/// Encapsulates exit code to exit our process.
+#[derive(Debug)]
+pub struct Exit(u8);
+
+impl Exit {
+    pub fn code(&self) -> u8 {
+        self.0
+    }
+}
+
+impl std::error::Error for Exit {}
+
+impl Display for Exit {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
