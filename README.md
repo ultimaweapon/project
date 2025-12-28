@@ -128,8 +128,10 @@ Start building debug build!
 
 Lua implementation used here is [Tsuki](https://github.com/ultimaweapon/tsuki). There are some differences with vanilla Lua, which you can see in Tsuki's README. The following is a list of additional changes from Project:
 
-- `pcall` has been removed.
-- `os` library has `exit` removed.
+- No `pcall`.
+- No `os.execute`.
+- No `os.exit`.
+- No `os.remove`.
 
 ### args[name]
 
@@ -146,6 +148,15 @@ Parse a JSON string and return a corresponding value (e.g. the result will be a 
 ### os.arch
 
 Architecture of the OS. The value will be one of `aarch64` and `x86_64`.
+
+### os.copyfile(src, dst [, mode])
+
+Copy a file from `src` to `dst`. This function will **overwrite** the contents of `dst`. Note that `dst` always treat as a destination file, not a destination directory. `mode` can be either:
+
+- `content`: Copy only content, not permissions. This is default if `mode` is absent.
+- `all`: Copy both content and permissions. This use [tokio::fs::copy](https://docs.rs/tokio/latest/tokio/fs/fn.copy.html) under the hood.
+
+Returns number of bytes copied.
 
 ### os.createdir(path [, ...])
 
