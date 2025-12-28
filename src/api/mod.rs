@@ -2,6 +2,7 @@ pub use self::args::ArgsModule;
 pub use self::json::JsonModule;
 pub use self::os::OsModule;
 pub use self::path::PathModule;
+pub use self::string::StringModule;
 pub use self::url::UrlModule;
 
 use crate::App;
@@ -13,6 +14,7 @@ mod args;
 mod json;
 mod os;
 mod path;
+mod string;
 mod url;
 
 /// Implementation of [Module] for global APIs.

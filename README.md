@@ -227,6 +227,12 @@ path.join('abc', 'def')
 
 Will result in `abc/def` on *nix and `abc\def` on Windows. This use [PathBuf::push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push) to create the path so if any arguments is an absolute path it will **discard** the path that was created by previous arguments.
 
+### string.capitalize(str [, mode])
+
+Capitalize `str` and return it. `mode` can be either:
+
+- `first`: Capitalize only the first letter. This is default if `mode` is absent.
+
 ### Url:new(url)
 
 Create an instance of `Url` class from `url`. This class has the following properties and methods:

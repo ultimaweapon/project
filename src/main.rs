@@ -1,7 +1,9 @@
 #![allow(clippy::await_holding_refcell_ref)] // We are single-threaded.
 #![allow(clippy::new_ret_no_self)] // We need this for Lua userdata.
 
-use self::api::{ArgsModule, GlobalModule, JsonModule, OsModule, PathModule, UrlModule};
+use self::api::{
+    ArgsModule, GlobalModule, JsonModule, OsModule, PathModule, StringModule, UrlModule,
+};
 use self::manifest::{ArgName, ArgType, CommandArg, Project, ScriptPath};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;
@@ -12,7 +14,7 @@ use std::pin::Pin;
 use std::process::{ExitCode, Termination};
 use std::rc::Rc;
 use tokio::task::LocalSet;
-use tsuki::builtin::{CoroLib, IoLib, MathLib, StrLib, TableLib, Utf8Lib};
+use tsuki::builtin::{CoroLib, IoLib, MathLib, TableLib, Utf8Lib};
 use tsuki::{CallError, Lua, ParseError};
 
 mod api;
@@ -103,7 +105,7 @@ fn run_script(script: ScriptPath, defs: FxHashMap<ArgName, CommandArg>, args: Ar
     lua.use_module(None, true, MathLib).unwrap();
     lua.use_module(None, true, OsModule).unwrap();
     lua.use_module(None, true, PathModule).unwrap();
-    lua.use_module(None, true, StrLib).unwrap();
+    lua.use_module(None, true, StringModule).unwrap();
     lua.use_module(None, true, TableLib).unwrap();
     lua.use_module(None, true, UrlModule).unwrap();
     lua.use_module(None, true, Utf8Lib).unwrap();
