@@ -50,7 +50,10 @@ impl Module<App> for OsModule {
         m.set_str_key("kind", kind);
 
         // Set functions.
-        m.set_str_key("capture", fp!(self::capture::entry));
+        m.set_str_key(
+            "capture",
+            AsyncFp::new(|cx| Box::pin(self::capture::entry(cx))),
+        );
         m.set_str_key(
             "copyfile",
             AsyncFp::new(|cx| Box::pin(self::copyfile::entry(cx))),

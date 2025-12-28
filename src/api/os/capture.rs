@@ -1,10 +1,13 @@
 use crate::App;
 use std::borrow::Cow;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
+use tokio::process::Command;
 use tsuki::context::{Args, Context, Ret};
 use tsuki::{FromStr, Value};
 
-pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
+pub async fn entry(
+    cx: Context<'_, App, Args>,
+) -> Result<Context<'_, App, Ret>, Box<dyn std::error::Error>> {
     // Get options.
     let prog = cx.arg(1);
     let opts = if let Some(s) = prog.as_str(true) {
@@ -81,13 +84,19 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
             cmd.stdout(Stdio::inherit());
             cmd.stderr(Stdio::piped());
         }
-        From::Both => (), // Default to both for Command::output().
+        From::Both => {
+            cmd.stdout(Stdio::piped());
+            cmd.stderr(Stdio::piped());
+        }
     }
 
     // Run.
     let mut r = cmd
-        .output()
-        .map_err(|e| erdp::wrap(format!("failed to run '{}'", opts.prog), e))?;
+        .spawn()
+        .map_err(|e| erdp::wrap(format!("failed to spawn '{}'", opts.prog), e))?
+        .wait_with_output()
+        .await
+        .map_err(|e| erdp::wrap(format!("failed to wait '{}'", opts.prog), e))?;
 
     if !r.status.success() {
         return Err(format!("'{}' exited with an error ({})", opts.prog, r.status).into());
