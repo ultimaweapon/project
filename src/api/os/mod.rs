@@ -2,6 +2,7 @@ use crate::App;
 use tsuki::{Lua, Module, Ref, Table, fp};
 
 mod capture;
+mod removedir;
 mod run;
 mod spawn;
 
@@ -48,6 +49,7 @@ impl Module<App> for OsModule {
 
         // Set functions.
         m.set_str_key("capture", fp!(self::capture::entry));
+        m.set_str_key("removedir", fp!(self::removedir::entry));
         m.set_str_key("run", fp!(self::run::entry));
         m.set_str_key("spawn", fp!(self::spawn::entry));
 

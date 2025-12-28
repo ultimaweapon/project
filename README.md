@@ -3,24 +3,34 @@
 Project is a cross-platform CLI program to execute commands defined in the `Project.yml`. Each command is a Lua script. The main different from [just](https://github.com/casey/just) is Project focus on cross-platform scripting instead of rely on the other tools.
 
 > [!WARNING]
-> There is a plan to upgrade to Lua 5.5 so don't write your script in such a way that it is not compatible with it.
+> There is a plan to upgrade to Lua 5.5 so don't write your script in such a way that it is not [compatible](https://www.lua.org/manual/5.5/manual.html#8.1) with it.
 
 ## Key features
 
 - Batteries included.
 - Small and lightweight.
-- Easy to install on all platforms.
+- Easy to install on Linux, macOS and Windows.
 - Single executable with only system dependencies.
 - Lua 5.4 as scripting language.
-- Non-blocking concurrent execution with Lua coroutine.
+- Non-blocking concurrent execution with Lua thread.
+- Simple APIs designed for project automation.
 
 ## Why use this instead of Python?
 
-- Project are lightweight to install.
+- Project are easy lightweight to install (especially if you already have Rust or on Windows).
 - No additional steps to install external dependencies required by your scripts.
+- APIs designed for project automation.
 - Declarative command.
 
 ## Installation
+
+There are 3 ways to install Project:
+
+1. Via cargo (recommended if you have Rust).
+2. Via automated script (recommended if you don't have Rust).
+3. Manual download.
+
+### Cargo
 
 If you have Rust installed you can use [cargo install](https://doc.rust-lang.org/cargo/commands/cargo-install.html) to install Project:
 
@@ -140,6 +150,10 @@ Architecture of the OS. The value will be one of `aarch64` and `x86_64`.
 ### os.kind
 
 Kind of the OS. The value will be one of `linux`, `macos` and `windows`.
+
+### os.removedir(path)
+
+Remove a directory and its content, which mean it will **always** remove the directory even if the directory is not empty.
 
 ### os.run(prog [, ...])
 
