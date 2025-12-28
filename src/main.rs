@@ -1,7 +1,7 @@
 #![allow(clippy::await_holding_refcell_ref)] // We are single-threaded.
 #![allow(clippy::new_ret_no_self)] // We need this for Lua userdata.
 
-use self::api::{ArgsModule, GlobalModule, JsonModule, OsModule, UrlModule};
+use self::api::{ArgsModule, GlobalModule, JsonModule, OsModule, PathModule, UrlModule};
 use self::manifest::{ArgName, ArgType, CommandArg, Project, ScriptPath};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;
@@ -102,6 +102,7 @@ fn run_script(script: ScriptPath, defs: FxHashMap<ArgName, CommandArg>, args: Ar
     lua.use_module(None, true, JsonModule).unwrap();
     lua.use_module(None, true, MathLib).unwrap();
     lua.use_module(None, true, OsModule).unwrap();
+    lua.use_module(None, true, PathModule).unwrap();
     lua.use_module(None, true, StrLib).unwrap();
     lua.use_module(None, true, TableLib).unwrap();
     lua.use_module(None, true, UrlModule).unwrap();

@@ -1,6 +1,7 @@
 pub use self::args::ArgsModule;
 pub use self::json::JsonModule;
 pub use self::os::OsModule;
+pub use self::path::PathModule;
 pub use self::url::UrlModule;
 
 use crate::App;
@@ -11,6 +12,7 @@ use tsuki::{Lua, Module, Table, fp};
 mod args;
 mod json;
 mod os;
+mod path;
 mod url;
 
 /// Implementation of [Module] for global APIs.
@@ -76,4 +78,29 @@ impl Display for Exit {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
+}
+
+fn join_path(
+    cx: &Context<App, Args>,
+    mut f: impl FnMut(usize, &str) -> Result<(), Box<dyn std::error::Error>>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let path = cx.arg(1);
+    let path = path
+        .to_str()?
+        .as_utf8()
+        .ok_or_else(|| path.error("expect UTF-8 string"))?;
+
+    f(1, path)?;
+
+    for i in 2..=cx.args() {
+        let path = cx.arg(i);
+        let path = path
+            .to_str()?
+            .as_utf8()
+            .ok_or_else(|| path.error("expect UTF-8 string"))?;
+
+        f(i, path)?;
+    }
+
+    Ok(())
 }

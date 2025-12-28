@@ -1,5 +1,4 @@
 use crate::App;
-use tsuki::context::{Args, Context};
 use tsuki::{Lua, Module, Ref, Table, fp};
 
 mod capture;
@@ -58,29 +57,4 @@ impl Module<App> for OsModule {
 
         Ok(m)
     }
-}
-
-fn join_path(
-    cx: &Context<App, Args>,
-    mut f: impl FnMut(usize, &str) -> Result<(), Box<dyn std::error::Error>>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let path = cx.arg(1);
-    let path = path
-        .to_str()?
-        .as_utf8()
-        .ok_or_else(|| path.error("expect UTF-8 string"))?;
-
-    f(1, path)?;
-
-    for i in 2..=cx.args() {
-        let path = cx.arg(i);
-        let path = path
-            .to_str()?
-            .as_utf8()
-            .ok_or_else(|| path.error("expect UTF-8 string"))?;
-
-        f(i, path)?;
-    }
-
-    Ok(())
 }

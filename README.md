@@ -213,6 +213,16 @@ Working directory for the process. If this key does not present it will default 
 
 Can be either `null`, `inherit` or `pipe`. If this key does not present it will default to `inherit`. For `pipe` the process object will have `stdout` property, which have [read](https://www.lua.org/manual/5.4/manual.html#pdf-file:read) method.
 
+### path.join(component [, ...])
+
+Returns a joined path components so:
+
+```lua
+path.join('abc', 'def')
+```
+
+Will result in `abc/def` on *nix and `abc\def` on Windows. This use [PathBuf::push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push) to create the path so if any arguments is an absolute path it will **discard** the path that was created by previous arguments.
+
 ### Url:new(url)
 
 Create an instance of `Url` class from `url`. This class has the following properties and methods:
