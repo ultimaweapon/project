@@ -1,7 +1,9 @@
 use crate::App;
+use tsuki::context::{Args, Context};
 use tsuki::{Lua, Module, Ref, Table, fp};
 
 mod capture;
+mod createdir;
 mod removedir;
 mod run;
 mod spawn;
@@ -49,10 +51,36 @@ impl Module<App> for OsModule {
 
         // Set functions.
         m.set_str_key("capture", fp!(self::capture::entry));
+        m.set_str_key("createdir", fp!(self::createdir::entry));
         m.set_str_key("removedir", fp!(self::removedir::entry));
         m.set_str_key("run", fp!(self::run::entry));
         m.set_str_key("spawn", fp!(self::spawn::entry));
 
         Ok(m)
     }
+}
+
+fn join_path(
+    cx: &Context<App, Args>,
+    mut f: impl FnMut(usize, &str) -> Result<(), Box<dyn std::error::Error>>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let path = cx.arg(1);
+    let path = path
+        .to_str()?
+        .as_utf8()
+        .ok_or_else(|| path.error("expect UTF-8 string"))?;
+
+    f(1, path)?;
+
+    for i in 2..=cx.args() {
+        let path = cx.arg(i);
+        let path = path
+            .to_str()?
+            .as_utf8()
+            .ok_or_else(|| path.error("expect UTF-8 string"))?;
+
+        f(i, path)?;
+    }
+
+    Ok(())
 }

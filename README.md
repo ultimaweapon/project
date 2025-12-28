@@ -147,13 +147,35 @@ Parse a JSON string and return a corresponding value (e.g. the result will be a 
 
 Architecture of the OS. The value will be one of `aarch64` and `x86_64`.
 
+### os.createdir(path [, ...])
+
+Recursively create a directory and all of its parent components if they are missing. Path will be **joined** together with native path separator to form a path to directory so:
+
+```lua
+local r = os.createdir('abc', 'def')
+
+if t[1] then
+  -- 'abc' does not exists before and was created by the call
+end
+```
+
+Will result in `abc/def` on *nix and `abc\def` on Windows as a path to create. This use [PathBuf::push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push) to create the path so if any arguments is an absolute path it will **discard** the path that was created by previous arguments.
+
+Returns a table consist of argument number as a key and `boolean` as a value indicated if the component was created by the call (that is, not exists before the call).
+
 ### os.kind
 
 Kind of the OS. The value will be one of `linux`, `macos` and `windows`.
 
-### os.removedir(path)
+### os.removedir(path [, ...])
 
-Remove a directory and its content, which mean it will **always** remove the directory even if the directory is not empty.
+Remove a directory and its content, which mean it will **always** remove the directory even if the directory is not empty. Path will be **joined** together with native path separator to form a path to directory so:
+
+```lua
+os.removedir('abc', 'def')
+```
+
+Will result in `abc/def` on *nix and `abc\def` on Windows as a path to remove. This use [PathBuf::push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push) to create the path so if any arguments is an absolute path it will **discard** the path that was created by previous arguments.
 
 ### os.run(prog [, ...])
 
@@ -251,7 +273,7 @@ Description of the command.
 
 ### commands.<command_id>.script
 
-Path to Lua script to execute when this command is invoked. Path separator always is `/` even on Windows.
+Path to Lua script to execute when this command is invoked. Path separator always is `/` even on Windows and Project will convert to native path.
 
 ## License
 
