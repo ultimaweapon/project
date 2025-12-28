@@ -213,6 +213,10 @@ Working directory for the process. If this key does not present it will default 
 
 Can be either `null`, `inherit` or `pipe`. If this key does not present it will default to `inherit`. For `pipe` the process object will have `stdout` property, which have [read](https://www.lua.org/manual/5.4/manual.html#pdf-file:read) method.
 
+### path.basename(path)
+
+Returns the final component of the path, if there is one. This use [Path::file_name](https://doc.rust-lang.org/std/path/struct.Path.html#method.file_name) to extract the name.
+
 ### path.join(component [, ...])
 
 Returns a joined path components so:
