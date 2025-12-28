@@ -60,7 +60,7 @@ impl Module<App> for OsModule {
         );
         m.set_str_key("createdir", fp!(self::createdir::entry));
         m.set_str_key("removedir", fp!(self::removedir::entry));
-        m.set_str_key("run", fp!(self::run::entry));
+        m.set_str_key("run", AsyncFp::new(|cx| Box::pin(self::run::entry(cx))));
         m.set_str_key("spawn", fp!(self::spawn::entry));
 
         Ok(m)

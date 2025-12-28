@@ -1,8 +1,11 @@
 use crate::App;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
+use tokio::process::Command;
 use tsuki::context::{Args, Context, Ret};
 
-pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
+pub async fn entry(
+    cx: Context<'_, App, Args>,
+) -> Result<Context<'_, App, Ret>, Box<dyn std::error::Error>> {
     // Get options.
     let prog = cx.arg(1);
     let prog = prog
@@ -34,6 +37,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
     // Run.
     let status = cmd
         .status()
+        .await
         .map_err(|e| erdp::wrap(format!("failed to run '{prog}'"), e))?;
 
     if !status.success() {
