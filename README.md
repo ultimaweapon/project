@@ -1,4 +1,5 @@
 # Project
+[![Crates.io Version](https://img.shields.io/crates/v/project)](https://crates.io/crates/project)
 
 Project is a cross-platform CLI program to execute commands defined in the `Project.yml`. Each command is a Lua script. The main different from [just](https://github.com/casey/just) is Project focus on cross-platform scripting instead of rely on the other tools.
 
@@ -33,6 +34,12 @@ There are 3 ways to install Project:
 ### Cargo
 
 If you have Rust installed you can use [cargo install](https://doc.rust-lang.org/cargo/commands/cargo-install.html) to install Project:
+
+```sh
+cargo install project
+```
+
+Or from Git for development version:
 
 ```sh
 cargo install --git https://github.com/ultimaweapon/project.git
