@@ -12,10 +12,10 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
         Ok(())
     })?;
 
-    if let Err(e) = std::fs::remove_dir_all(&path) {
-        if e.kind() != ErrorKind::NotFound {
-            return Err(erdp::wrap(format!("failed to remove {}", path.display()), e).into());
-        }
+    if let Err(e) = std::fs::remove_dir_all(&path)
+        && e.kind() != ErrorKind::NotFound
+    {
+        return Err(erdp::wrap(format!("failed to remove {}", path.display()), e).into());
     }
 
     Ok(cx.into())
