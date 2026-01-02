@@ -149,7 +149,19 @@ Parse a JSON string and return a corresponding value (e.g. the result will be a 
 
 Architecture of the OS. The value will be one of `aarch64` and `x86_64`.
 
-### os.copyfile(src, dst [, mode])
+### os.capture(prog [, ...])
+
+Run `prog` with the remaining arguments as its arguments and return its outputs, which is stdout by default. This does not use OS shell to run `prog`. The returned string will have LF and/or CR at the end removed by default. This function will raise an error by default if `prog` exit with non-zero code. By default, stdin will be a null stream and a non-captured stream will be inherits from Project process. Working directory will be the directory that contains `Project.yml` by default.
+
+All `nil` in the arguments will be removed (e.g. `os.capture('echo', 'abc', nil, 'def')` will invoke `echo` with `abc` and `def` as arguments).
+
+If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following additional items:
+
+#### from
+
+Can be either `stdout`, `stderr` or `both`. If this key does not present it will default to `stdout`. With `both` this function will return a table contains `stdout` and `stderr` fields.
+
+### os.copyfileas(src, dst [, mode])
 
 Copy a file from `src` to `dst`. This function will **overwrite** the contents of `dst`. Note that `dst` always treat as a destination file, not a destination directory. `mode` can be either:
 
@@ -193,18 +205,6 @@ Will result in `abc/def` on *nix and `abc\def` on Windows as a path to remove. T
 Run `prog` with the remaining arguments as its arguments. Unlike `os.execute`, this does not use OS shell to run `prog`. This function will raise an error by default if `prog` exit with non-zero code. By default, stdin will be a null stream and stdout/stderr will be inherits from Project process and working directory will be the directory that contains `Project.yml`.
 
 All `nil` in the arguments will be removed (e.g. `os.run('echo', 'abc', nil, 'def')` will invoke `echo` with only 2 arguments).
-
-### os.capture(prog [, ...])
-
-Run `prog` with the remaining arguments as its arguments and return its outputs, which is stdout by default. This does not use OS shell to run `prog`. The returned string will have LF and/or CR at the end removed by default. This function will raise an error by default if `prog` exit with non-zero code. By default, stdin will be a null stream and a non-captured stream will be inherits from Project process. Working directory will be the directory that contains `Project.yml` by default.
-
-All `nil` in the arguments will be removed (e.g. `os.capture('echo', 'abc', nil, 'def')` will invoke `echo` with `abc` and `def` as arguments).
-
-If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following additional items:
-
-#### from
-
-Can be either `stdout`, `stderr` or `both`. If this key does not present it will default to `stdout`. With `both` this function will return a table contains `stdout` and `stderr` fields.
 
 ### os.spawn(prog [, ...])
 
