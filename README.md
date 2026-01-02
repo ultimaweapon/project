@@ -52,6 +52,14 @@ Failed to open Project.yml: No such file or directory (os error 2).
 
 If it error with command not found you need to add Cargo installation directory to `PATH` manually. You can find this directory in the outputs of `cargo install` on the above.
 
+### Automated script
+
+TBA
+
+### Manual download
+
+TBA
+
 ## Quick start
 
 Create `Project.yml` in the root of your repository with the following content:
@@ -314,6 +322,30 @@ A command definition.
 ### commands.<command_id>.description
 
 Description of the command.
+
+### commands.<command_id>.args.<arg_id>.description
+
+Description of the argument.
+
+### commands.<command_id>.args.<arg_id>.long
+
+Long name of the argument (e.g. `help`).
+
+### commands.<command_id>.args.<arg_id>.short
+
+Shot name of the argument (e.g. `h`).
+
+### commands.<command_id>.args.<arg_id>.type
+
+Type of the argument. Can be either `bool` or `string`.
+
+### commands.<command_id>.args.<arg_id>.placeholder
+
+Placeholer of argument's value.
+
+### commands.<command_id>.args.<arg_id>.default
+
+Default value if argument presented but the value is missing.
 
 ### commands.<command_id>.script
 

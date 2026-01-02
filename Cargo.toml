@@ -1,7 +1,8 @@
 [package]
 name = "project"
-description = "Run a command defined in Project.yml"
+description = "Project automation powered by Rust and Lua"
 version = "0.1.0"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/ultimaweapon/project"
 edition = "2024"
 
