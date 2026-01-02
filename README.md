@@ -235,7 +235,11 @@ Can be either `null`, `inherit` or `pipe`. If this key does not present it will 
 
 ### path.basename(path)
 
-Returns the final component of the path, if there is one. This use [Path::file_name](https://doc.rust-lang.org/std/path/struct.Path.html#method.file_name) to extract the name.
+Returns the final component of the path, if there is one. This use [Path::file_name](https://doc.rust-lang.org/std/path/struct.Path.html#method.file_name) under the hood.
+
+### path.dirname(path)
+
+Returns `path` without its final component, if there is one. This use [Path::parent](https://doc.rust-lang.org/std/path/struct.Path.html#method.parent) under the hood.
 
 ### path.join(component [, ...])
 

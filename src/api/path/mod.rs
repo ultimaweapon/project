@@ -16,6 +16,7 @@ impl Module<App> for PathModule {
         let m = lua.create_table();
 
         m.set_str_key("basename", fp!(basename));
+        m.set_str_key("dirname", fp!(dirname));
         m.set_str_key("join", fp!(join));
 
         Ok(m)
@@ -31,6 +32,22 @@ fn basename(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::er
     let path = Path::new(path);
 
     if let Some(v) = path.file_name() {
+        // We requires argument to be UTF-8 so this will never fails.
+        cx.push_str(v.to_str().unwrap())?;
+    }
+
+    Ok(cx.into())
+}
+
+fn dirname(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
+    let path = cx.arg(1);
+    let path = path
+        .to_str()?
+        .as_utf8()
+        .ok_or_else(|| path.error("expect UTF-8 string"))?;
+    let path = Path::new(path);
+
+    if let Some(v) = path.parent() {
         // We requires argument to be UTF-8 so this will never fails.
         cx.push_str(v.to_str().unwrap())?;
     }
