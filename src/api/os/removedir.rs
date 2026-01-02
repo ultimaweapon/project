@@ -1,5 +1,6 @@
 use crate::App;
 use crate::api::join_path;
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use tsuki::context::{Args, Context, Ret};
 
@@ -11,8 +12,11 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
         Ok(())
     })?;
 
-    std::fs::remove_dir_all(&path)
-        .map_err(|e| erdp::wrap(format!("failed to remove {}", path.display()), e))?;
+    if let Err(e) = std::fs::remove_dir_all(&path) {
+        if e.kind() != ErrorKind::NotFound {
+            return Err(erdp::wrap(format!("failed to remove {}", path.display()), e).into());
+        }
+    }
 
     Ok(cx.into())
 }
