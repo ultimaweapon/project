@@ -161,6 +161,15 @@ If `prog` is a table the item at index #1 must be the name of program to run and
 
 Can be either `stdout`, `stderr` or `both`. If this key does not present it will default to `stdout`. With `both` this function will return a table contains `stdout` and `stderr` fields.
 
+### os.copyfile(src, dst [, mode])
+
+Copy a file from `src` to directory `dst`. This function will **overwrite** file with the same name in `dst`. `mode` can be either:
+
+- `content`: Copy only content, not permissions. This is default if `mode` is absent.
+- `all`: Copy both content and permissions. This use [tokio::fs::copy](https://docs.rs/tokio/latest/tokio/fs/fn.copy.html) under the hood.
+
+Returns number of bytes copied.
+
 ### os.copyfileas(src, dst [, mode])
 
 Copy a file from `src` to `dst`. This function will **overwrite** the contents of `dst`. Note that `dst` always treat as a destination file, not a destination directory. `mode` can be either:

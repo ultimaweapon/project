@@ -1,6 +1,6 @@
+use super::CopyMode;
 use crate::App;
 use tokio::fs::File;
-use tsuki::FromStr;
 use tsuki::context::{Args, Context, Ret};
 
 pub async fn entry(
@@ -24,12 +24,12 @@ pub async fn entry(
             .ok_or_else(|| mode.error("expect UTF-8 string"))?
             .parse()
             .map_err(|e| mode.error(e))?,
-        None => Mode::default(),
+        None => CopyMode::default(),
     };
 
     // Copy.
     let r = match mode {
-        Mode::Content => {
+        CopyMode::Content => {
             let mut from = File::open(src)
                 .await
                 .map_err(|e| erdp::wrap(format!("failed to open {src}"), e))?;
@@ -41,7 +41,7 @@ pub async fn entry(
                 .await
                 .map_err(|e| erdp::wrap(format!("failed to copy {src} to {dst}"), e))?
         }
-        Mode::All => match tokio::fs::copy(src, dst).await {
+        CopyMode::All => match tokio::fs::copy(src, dst).await {
             Ok(v) => v,
             Err(e) => return Err(erdp::wrap(format!("failed to copy {src} to {dst}"), e).into()),
         },
@@ -51,11 +51,4 @@ pub async fn entry(
     cx.push(i64::try_from(r).unwrap())?;
 
     Ok(cx.into())
-}
-
-#[derive(Default, FromStr)]
-enum Mode {
-    #[default]
-    Content,
-    All,
 }
