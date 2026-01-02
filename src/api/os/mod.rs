@@ -1,5 +1,5 @@
 use crate::App;
-use tsuki::{AsyncFp, Lua, Module, Ref, Table, fp};
+use tsuki::{Lua, Module, Ref, Table, fp};
 
 mod capture;
 mod copyfile;
@@ -50,17 +50,11 @@ impl Module<App> for OsModule {
         m.set_str_key("kind", kind);
 
         // Set functions.
-        m.set_str_key(
-            "capture",
-            AsyncFp::new(|cx| Box::pin(self::capture::entry(cx))),
-        );
-        m.set_str_key(
-            "copyfile",
-            AsyncFp::new(|cx| Box::pin(self::copyfile::entry(cx))),
-        );
+        m.set_str_key("capture", fp!(self::capture::entry as async));
+        m.set_str_key("copyfile", fp!(self::copyfile::entry as async));
         m.set_str_key("createdir", fp!(self::createdir::entry));
         m.set_str_key("removedir", fp!(self::removedir::entry));
-        m.set_str_key("run", AsyncFp::new(|cx| Box::pin(self::run::entry(cx))));
+        m.set_str_key("run", fp!(self::run::entry as async));
         m.set_str_key("spawn", fp!(self::spawn::entry));
 
         Ok(m)

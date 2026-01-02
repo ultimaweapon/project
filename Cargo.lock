@@ -575,9 +575,9 @@ dependencies = [
 
 [[package]]
 name = "tsuki"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43d623746159fc98c0cbc3cb807d835c5f012a0ef0aa9c3e53f55ac4a16e5bcf"
+checksum = "4cb3394713f987d1bd7abeb83b4a30ff415d212d0f90d06db6d4e7d7ddeb3785"
 dependencies = [
  "erdp",
  "libc",
