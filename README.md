@@ -13,7 +13,7 @@ Project is a cross-platform CLI program to execute commands defined in the `Proj
 - Easy to install on Linux, macOS and Windows.
 - Single executable with only system dependencies.
 - Lua 5.4 as scripting language.
-- Non-blocking concurrent execution with Lua thread.
+- Non-blocking concurrent execution with Tokio + Lua thread.
 - Simple APIs designed for project automation.
 
 ## Why use this instead of Python?

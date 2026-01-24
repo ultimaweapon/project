@@ -170,8 +170,6 @@ enum Exit {
 
 impl Termination for Exit {
     fn report(self) -> ExitCode {
-        use std::error::Error;
-
         // SAFETY: This is safe since Exit marked with `repr(u8)`. See
         // https://doc.rust-lang.org/std/mem/fn.discriminant.html for more details.
         let mut code = unsafe { (&self as *const Self as *const u8).read() };
@@ -179,7 +177,7 @@ impl Termination for Exit {
         match self {
             Self::ScriptResult(v) => code = v,
             Self::RunScript(p, e) => match e.downcast::<CallError>() {
-                Ok(e) => match e.source().and_then(|e| e.downcast_ref::<self::api::Exit>()) {
+                Ok(e) => match e.reason().downcast_ref::<self::api::Exit>() {
                     Some(e) => code = e.code(),
                     None => {
                         let (f, l) = e.location().unwrap();
