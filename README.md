@@ -350,13 +350,17 @@ Type of the argument. Can be either `bool` or `string`.
 
 List of allowed values if `type` is `string`.
 
+### commands.<command_id>.args.<arg_id>.required
+
+Boolean indicated if the argument is required (default is `false`).
+
 ### commands.<command_id>.args.<arg_id>.placeholder
 
 Placeholer of argument's value.
 
 ### commands.<command_id>.args.<arg_id>.default
 
-Default value if argument presented but the value is missing.
+Default value if argument presented but its value is missing.
 
 ### commands.<command_id>.script
 

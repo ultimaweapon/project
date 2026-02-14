@@ -53,6 +53,8 @@ pub struct CommandArg {
     #[serde(rename = "type")]
     pub ty: ArgType,
     pub allowed_values: Option<AllowedValues>,
+    #[serde(default)]
+    pub required: bool,
     pub placeholder: Option<String>,
     pub default: Option<String>,
 }

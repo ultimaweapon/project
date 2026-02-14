@@ -72,6 +72,10 @@ fn main() -> Exit {
                 arg = arg.short(v);
             }
 
+            if def.required {
+                arg = arg.required(true);
+            }
+
             if let Some(v) = &def.default {
                 arg = arg.default_missing_value(v).num_args(0..=1);
             }
