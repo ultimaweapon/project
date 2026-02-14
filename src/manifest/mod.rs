@@ -2,7 +2,9 @@ pub use self::arg::*;
 pub use self::script::*;
 
 use rustc_hash::FxHashMap;
-use serde::Deserialize;
+use serde::de::Error;
+use serde::{Deserialize, Deserializer};
+use std::borrow::Cow;
 
 mod arg;
 mod script;
@@ -21,4 +23,23 @@ pub struct Command {
     #[serde(default)]
     pub args: FxHashMap<ArgName, CommandArg>,
     pub script: Option<ScriptPath>,
+}
+
+/// Non-empty string with white spaces trimmed.
+pub struct TrimmedNonEmpty(String);
+
+impl<'de> Deserialize<'de> for TrimmedNonEmpty {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let val = Cow::<str>::deserialize(deserializer)?;
+        let val = val.trim();
+
+        if val.is_empty() {
+            return Err(Error::custom("value cannot be empty"));
+        }
+
+        Ok(Self(val.into()))
+    }
 }

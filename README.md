@@ -346,6 +346,10 @@ Shot name of the argument (e.g. `h`).
 
 Type of the argument. Can be either `bool` or `string`.
 
+### commands.<command_id>.args.<arg_id>.allowed-values
+
+List of allowed values if `type` is `string`.
+
 ### commands.<command_id>.args.<arg_id>.placeholder
 
 Placeholer of argument's value.

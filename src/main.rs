@@ -5,6 +5,7 @@ use self::api::{
     ArgsModule, GlobalModule, JsonModule, OsModule, PathModule, StringModule, UrlModule,
 };
 use self::manifest::{ArgName, ArgType, CommandArg, Project, ScriptPath};
+use clap::builder::PossibleValuesParser;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use erdp::ErrorDisplay;
 use rustc_hash::FxHashMap;
@@ -53,7 +54,14 @@ fn main() -> Exit {
 
             match def.ty {
                 ArgType::Bool => arg = arg.action(ArgAction::SetTrue),
-                ArgType::String => (),
+                ArgType::String => 'b: {
+                    let set = match &def.allowed_values {
+                        Some(v) => v,
+                        None => break 'b,
+                    };
+
+                    arg = arg.value_parser(PossibleValuesParser::new(set.iter()));
+                }
             }
 
             if let Some(v) = &def.long {
