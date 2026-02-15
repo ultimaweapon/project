@@ -238,7 +238,7 @@ All `nil` in the arguments will be removed (e.g. `os.spawn('echo', 'abc', nil, '
 
 The process object can be a [to-be-closed](https://www.lua.org/manual/5.4/manual.html#3.3.8) variable, which will kill the process when the object goes out of scope. If the variable does not have `close` attribute the process will get killed when the object is freed by Lua GC.
 
-If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following additional items:
+If `prog` is a table the item at index #1 must be the name of program to run and it can contains the following additional fields:
 
 #### cwd
 
@@ -247,6 +247,12 @@ Working directory for the process. If this key does not present it will default 
 #### stdout
 
 Can be either `null`, `inherit` or `pipe`. If this key does not present it will default to `inherit`. For `pipe` the process object will have `stdout` property, which have [read](https://www.lua.org/manual/5.4/manual.html#pdf-file:read) method.
+
+#### env
+
+Environment variables for the process. Can be either a table or boolean. If a table each key-value pair will be set as environment variable for the process. The value can be either UTF-8 string for variable value or `false` to prevents inheriting the variable from parent process. For key only UTF-8 string is supported.
+
+For boolean you can use `false` to prevents inheriting any parent process environment variables.
 
 ### path.basename(path)
 

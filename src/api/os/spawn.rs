@@ -2,16 +2,40 @@ use crate::App;
 use memchr::memchr;
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::process::{Child, Command, Stdio};
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::ChildStdout;
 use tsuki::context::{Args, Context, Ret};
-use tsuki::{FromStr, Value, class};
+use tsuki::{FromStr, Ref, Table, Value, class};
 
 /// Implementation of `os.spawn`.
 pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::error::Error>> {
+    // Spawn.
+    let mut prog = spawn(&cx)?;
+    let stdout = prog.stdout.take();
+    let prog = cx.create_ud(Process(RefCell::new(Some(prog))));
+
+    // Set stdout.
+    if let Some(v) = stdout {
+        let v = match ChildStdout::from_std(v) {
+            Ok(v) => cx.create_ud(OutputStream(RefCell::new(OutputState {
+                rdr: Some(Box::pin(v)),
+                buf: Vec::new(),
+            }))),
+            Err(e) => return Err(erdp::wrap("failed to convert stdout to asynchronous", e).into()),
+        };
+
+        prog.set("stdout", v);
+    }
+
+    cx.push(prog)?;
+
+    Ok(cx.into())
+}
+
+fn spawn(cx: &Context<App, Args>) -> Result<Child, Box<dyn std::error::Error>> {
     // Get options.
     let arg = cx.arg(1);
     let opts = if let Some(prog) = arg.as_str(true) {
@@ -24,21 +48,25 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
             prog,
             cwd: None,
             stdout: Stream::Inherit,
+            env: Env::Inherit,
         }
     } else if let Some(t) = arg.as_table() {
-        // Program.
+        // Get program name.
         let prog = match t.get(1) {
             Value::Str(v) => v
                 .as_utf8()
-                .ok_or_else(|| arg.error("expect UTF-8 string at index 1"))?
+                .ok_or_else(|| arg.error("expect UTF-8 string at index #1"))?
                 .to_owned()
                 .into(),
             v => {
-                return Err(arg.error(format!("expect string at index 1, got {}", cx.type_name(v))));
+                return Err(arg.error(format!(
+                    "expect string at index #1, got {}",
+                    cx.type_name(v)
+                )));
             }
         };
 
-        // CWD.
+        // Get cwd.
         let cwd = match t.get_str_key("cwd") {
             Value::Nil => None,
             Value::Str(v) => v
@@ -49,7 +77,7 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
             v => return Err(arg.error(format!("expect string on 'cwd', got {}", cx.type_name(v)))),
         };
 
-        // STDOUT.
+        // Get stdout.
         let stdout = match t.get_str_key("stdout") {
             Value::Nil => Stream::Inherit,
             Value::Str(v) => {
@@ -68,7 +96,25 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
             }
         };
 
-        Options { prog, cwd, stdout }
+        // Get env.
+        let env = match t.get_str_key("env") {
+            Value::Nil | Value::True => Env::Inherit,
+            Value::False => Env::Clear,
+            Value::Table(t) => Env::Update(t),
+            v => {
+                return Err(arg.error(format!(
+                    "expect boolean or table on 'env', got {}",
+                    cx.type_name(v)
+                )));
+            }
+        };
+
+        Options {
+            prog,
+            cwd,
+            stdout,
+            env,
+        }
     } else {
         return Err(arg.invalid_type("string or table"));
     };
@@ -106,29 +152,57 @@ pub fn entry(cx: Context<App, Args>) -> Result<Context<App, Ret>, Box<dyn std::e
         Stream::Pipe => cmd.stdout(Stdio::piped()),
     };
 
-    // Spawn.
-    let mut prog = cmd
-        .spawn()
-        .map_err(|e| erdp::wrap(format!("failed to spawn '{}'", opts.prog), e))?;
-    let stdout = prog.stdout.take();
-    let prog = cx.create_ud(Process(RefCell::new(Some(prog))));
+    // Setup environment vatiable.
+    match opts.env {
+        Env::Inherit => (),
+        Env::Clear => {
+            cmd.env_clear();
+        }
+        Env::Update(t) => {
+            for i in t.deref() {
+                // Get name.
+                let (k, v) = i.unwrap();
+                let k = match &k {
+                    Value::Str(v) => v
+                        .as_utf8()
+                        .ok_or_else(|| arg.error("expect 'env' table with UTF-8 keys"))?,
+                    v => {
+                        return Err(arg.error(format!(
+                            "expect 'env' table with string keys, got {}",
+                            cx.type_name(v)
+                        )));
+                    }
+                };
 
-    // Set stdout.
-    if let Some(v) = stdout {
-        let v = match ChildStdout::from_std(v) {
-            Ok(v) => cx.create_ud(OutputStream(RefCell::new(OutputState {
-                rdr: Some(Box::pin(v)),
-                buf: Vec::new(),
-            }))),
-            Err(e) => return Err(erdp::wrap("failed to convert stdout to asynchronous", e).into()),
-        };
+                // Get value.
+                let v = match &v {
+                    Value::False => {
+                        cmd.env_remove(k);
+                        continue;
+                    }
+                    Value::True => continue,
+                    Value::Str(v) => v
+                        .as_utf8()
+                        .ok_or_else(|| arg.error("expect 'env' table with UTF-8 values"))?,
+                    v => {
+                        return Err(arg.error(format!(
+                            "expect 'env' table with string or boolean values, got {}",
+                            cx.type_name(v)
+                        )));
+                    }
+                };
 
-        prog.set("stdout", v);
+                cmd.env(k, v);
+            }
+        }
     }
 
-    cx.push(prog)?;
+    // Spawn.
+    let prog = cmd
+        .spawn()
+        .map_err(|e| erdp::wrap(format!("failed to spawn '{}'", opts.prog), e))?;
 
-    Ok(cx.into())
+    Ok(prog)
 }
 
 /// Class of the value that returned from `os.spawn`.
@@ -232,6 +306,7 @@ struct Options<'a> {
     prog: Cow<'a, str>,
     cwd: Option<String>,
     stdout: Stream,
+    env: Env<'a>,
 }
 
 /// Option of standard stream for `os.spawn`.
@@ -240,4 +315,11 @@ enum Stream {
     Null,
     Inherit,
     Pipe,
+}
+
+/// Option for environment variable.
+enum Env<'a> {
+    Inherit,
+    Clear,
+    Update(Ref<'a, Table<App>>),
 }
